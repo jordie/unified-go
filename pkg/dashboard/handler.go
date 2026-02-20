@@ -5,8 +5,10 @@ import (
 	"net/http"
 )
 
-// IndexHandler serves the main dashboard
+// IndexHandler serves the main dashboard (backward compatibility)
+// Delegates to router's index handler
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
+	// Render basic app launcher
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`
@@ -61,12 +63,22 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
             text-align: center;
             margin-bottom: 30px;
         }
+        .nav-links {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .nav-links a {
+            margin: 0 10px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .nav-links a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
     <h1>Unified Educational Platform</h1>
     <div class="status">
-        <strong>Phase 1 Complete:</strong> Go foundation layer is running successfully!
+        <strong>Phase 7 In Progress:</strong> Unified dashboard with cross-app analytics!
     </div>
     <div class="apps-grid">
         <div class="app-card">
@@ -90,15 +102,16 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
             <a href="/piano">Launch App</a>
         </div>
     </div>
-    <div style="text-align: center; margin-top: 40px; color: #7f8c8d;">
-        <p><a href="/health" style="color: #3498db;">System Health Check</a></p>
+    <div class="nav-links">
+        <a href="/dashboard/unified">📊 Unified Dashboard</a>
+        <a href="/api/stats">📈 API Stats</a>
     </div>
 </body>
 </html>
 	`))
 }
 
-// GetStats returns dashboard statistics
+// GetStats returns dashboard statistics (backward compatibility)
 func GetStats(w http.ResponseWriter, r *http.Request) {
 	stats := map[string]interface{}{
 		"total_users":     0,
@@ -109,7 +122,7 @@ func GetStats(w http.ResponseWriter, r *http.Request) {
 			"reading": map[string]int{"users": 0, "books_read": 0},
 			"piano":   map[string]int{"users": 0, "songs_learned": 0},
 		},
-		"status": "placeholder",
+		"status": "Phase 7 - Aggregation in progress",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
