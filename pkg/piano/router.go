@@ -12,61 +12,99 @@ import (
 // Router configures piano app routes
 type Router struct {
 	service *Service
+	auth    *PianoAuthMiddleware
 }
 
 // NewRouter creates a new piano router
 func NewRouter(db *sql.DB) *Router {
 	repo := NewRepository(db)
 	service := NewService(repo)
-	return &Router{service: service}
+	return &Router{
+		service: service,
+		auth:    nil, // Auth middleware will be set if available
+	}
+}
+
+// SetAuthMiddleware sets the auth middleware for this router
+func (r *Router) SetAuthMiddleware(auth *PianoAuthMiddleware) {
+	r.auth = auth
 }
 
 // Routes returns the piano router with all configured routes
 func (r *Router) Routes() chi.Router {
 	router := chi.NewRouter()
 
-	// UI Routes - HTML pages
+	// Public UI Routes - no authentication required
 	router.Get("/", IndexHandler)
-	router.Get("/songs", r.SongsHandler)
-	router.Get("/practice/{id}", r.PracticeHandler)
-	router.Get("/dashboard", r.DashboardHandler)
-	router.Get("/leaderboard", r.LeaderboardHandler)
+	router.Get("/songs", r.SongsHandler)      // Public songs listing
 
-	// Song operations
-	router.Get("/api/songs", r.GetSongs)
-	router.Post("/api/songs", r.CreateSong)
-	router.Get("/api/songs/{id}", r.GetSong)
+	// Public API Routes - no authentication required
+	router.Get("/api/songs", r.GetSongs)      // List songs (no auth)
+	router.Get("/api/songs/{id}", r.GetSong)  // Get song details (no auth)
+	router.Get("/api/leaderboard", r.GetLeaderboard) // Public leaderboard
 
-	// Lesson operations
-	router.Post("/api/lessons", r.StartLesson)
-	router.Get("/api/lessons/{id}", r.GetLesson)
-	router.Get("/api/users/{userId}/lessons", r.GetUserLessons)
+	// Protected UI Routes - require authentication
+	router.With(r.requireAuth).Get("/practice/{id}", r.PracticeHandler)
+	router.With(r.requireAuth).Get("/dashboard", r.DashboardHandler)
 
-	// Practice session operations
-	router.Post("/api/practice", r.SavePracticeSession)
-	router.Get("/api/practice/{id}", r.GetPracticeSession)
+	// Protected API Routes - require authentication
+	// Song operations (create requires auth)
+	router.With(r.requireAuthJSON).Post("/api/songs", r.CreateSong)
 
-	// User progress and metrics
-	router.Get("/api/users/{userId}/progress", r.GetUserProgress)
-	router.Get("/api/users/{userId}/metrics", r.GetUserMetrics)
-	router.Get("/api/users/{userId}/evaluation", r.EvaluatePerformance)
+	// Lesson operations (all require auth)
+	router.With(r.requireAuthJSON).Post("/api/lessons", r.StartLesson)
+	router.With(r.requireAuthJSON).Get("/api/lessons/{id}", r.GetLesson)
+	router.With(r.requireAuthJSON).Get("/api/users/{userId}/lessons", r.GetUserLessons)
 
-	// Music theory
-	router.Post("/api/theory-quiz", r.GenerateQuiz)
-	router.Get("/api/sessions/{sessionId}/analysis", r.AnalyzeTheory)
+	// Practice session operations (require auth)
+	router.With(r.requireAuthJSON).Post("/api/practice", r.SavePracticeSession)
+	router.With(r.requireAuthJSON).Get("/api/practice/{id}", r.GetPracticeSession)
 
-	// MIDI operations
-	router.Post("/api/midi/upload", r.UploadMIDI)
-	router.Get("/api/midi/{sessionId}", r.DownloadMIDI)
+	// User progress and metrics (require auth)
+	router.With(r.requireAuthJSON).Get("/api/users/{userId}/progress", r.GetUserProgress)
+	router.With(r.requireAuthJSON).Get("/api/users/{userId}/metrics", r.GetUserMetrics)
+	router.With(r.requireAuthJSON).Get("/api/users/{userId}/evaluation", r.EvaluatePerformance)
 
-	// Lesson recommendations
-	router.Get("/api/recommend/{userId}", r.RecommendLesson)
-	router.Get("/api/progression-path/{userId}", r.GetProgressionPath)
+	// Music theory (require auth)
+	router.With(r.requireAuthJSON).Post("/api/theory-quiz", r.GenerateQuiz)
+	router.With(r.requireAuthJSON).Get("/api/sessions/{sessionId}/analysis", r.AnalyzeTheory)
 
-	// Leaderboard
-	router.Get("/api/leaderboard", r.GetLeaderboard)
+	// MIDI operations (require auth)
+	router.With(r.requireAuthJSON).Post("/api/midi/upload", r.UploadMIDI)
+	router.With(r.requireAuthJSON).Get("/api/midi/{sessionId}", r.DownloadMIDI)
+
+	// Lesson recommendations (require auth)
+	router.With(r.requireAuthJSON).Get("/api/recommend/{userId}", r.RecommendLesson)
+	router.With(r.requireAuthJSON).Get("/api/progression-path/{userId}", r.GetProgressionPath)
 
 	return router
+}
+
+// requireAuth is a middleware that requires authentication (redirects on failure)
+func (r *Router) requireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		userID := GetUserIDFromRequest(req)
+		if userID == 0 {
+			http.Redirect(w, req, "/login", http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, req)
+	})
+}
+
+// requireAuthJSON is a middleware that requires authentication (returns JSON error)
+func (r *Router) requireAuthJSON(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		userID := GetUserIDFromRequest(req)
+		if userID == 0 {
+			respondJSON(w, http.StatusUnauthorized, map[string]interface{}{
+				"error":  "authentication required",
+				"status": 401,
+			})
+			return
+		}
+		next.ServeHTTP(w, req)
+	})
 }
 
 // GetSongs retrieves available songs with filtering
