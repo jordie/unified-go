@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - TypeMaster</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: white;
+            background: #667eea;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover, nav a.active {
+            background: #764ba2;
+        }
+
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        .rank {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 16px;
+            min-width: 40px;
+        }
+
+        .rank.gold {
+            color: #ffd700;
+            font-size: 18px;
+        }
+
+        .rank.silver {
+            color: #c0c0c0;
+            font-size: 18px;
+        }
+
+        .rank.bronze {
+            color: #cd7f32;
+            font-size: 18px;
+        }
+
+        .user-name {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .score {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .stat-badge {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #666;
+            margin: 0 3px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #764ba2;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px;
+        }
+
+        @media (max-width: 600px) {
+            table {
+                font-size: 14px;
+            }
+
+            th, td {
+                padding: 10px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏆 Leaderboard</h1>
+            <p style="color: #666; margin: 10px 0;">Top typing practitioners</p>
+            <nav>
+                <a href="/typing/">Home</a>
+                <a href="/typing/api/stats">Stats</a>
+                <a href="/typing/api/leaderboard" class="active">Leaderboard</a>
+                <a href="/typing/api/history">History</a>
+            </nav>
+        </header>
+
+        <div class="content">
+            <div class="controls">
+                <button onclick="loadLeaderboard(10)">Top 10</button>
+                <button onclick="loadLeaderboard(25)">Top 25</button>
+                <button onclick="loadLeaderboard(50)">Top 50</button>
+            </div>
+
+            <div id="leaderboard-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>User</th>
+                            <th>Best WPM</th>
+                            <th>Average WPM</th>
+                            <th>Accuracy</th>
+                            <th>Tests</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+                                Loading...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 TypeMaster. Compete and improve!</p>
+        </div>
+    </div>
+
+    <script>
+        function getRankMedal(rank) {
+            if (rank === 1) return '🥇';
+            if (rank === 2) return '🥈';
+            if (rank === 3) return '🥉';
+            return '#' + rank;
+        }
+
+        function getRankClass(rank) {
+            if (rank === 1) return 'rank gold';
+            if (rank === 2) return 'rank silver';
+            if (rank === 3) return 'rank bronze';
+            return 'rank';
+        }
+
+        function loadLeaderboard(limit) {
+            fetch('/typing/api/leaderboard?limit=' + limit)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.data && data.data.leaderboard) {
+                        const leaderboard = data.data.leaderboard;
+                        const tbody = document.getElementById('leaderboard-body');
+
+                        if (leaderboard.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>No results yet</p></td></tr>';
+                            return;
+                        }
+
+                        tbody.innerHTML = leaderboard.map((entry, index) => `
+                            <tr>
+                                <td class="${getRankClass(index + 1)}">
+                                    ${getRankMedal(index + 1)}
+                                </td>
+                                <td class="user-name">User #${entry.user_id || '-'}</td>
+                                <td class="score">${(entry.best_wpm || 0).toFixed(1)}</td>
+                                <td>${(entry.average_wpm || 0).toFixed(1)}</td>
+                                <td>
+                                    <span class="stat-badge">${(entry.average_accuracy || 0).toFixed(0)}%</span>
+                                </td>
+                                <td>${entry.total_tests || 0}</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        document.getElementById('leaderboard-body').innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #c33;">Failed to load leaderboard</td></tr>';
+                    }
+                })
+                .catch(e => {
+                    console.error('Error:', e);
+                    document.getElementById('leaderboard-body').innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #c33;">Error loading leaderboard</td></tr>';
+                });
+        }
+
+        // Load top 10 by default
+        window.addEventListener('load', () => loadLeaderboard(10));
+    </script>
+</body>
+</html>

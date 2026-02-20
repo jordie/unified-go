@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Practice - TypeMaster</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: white;
+            background: #667eea;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover {
+            background: #764ba2;
+        }
+
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .practice-section {
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .typing-area {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 2px solid #ddd;
+        }
+
+        .typing-text {
+            font-size: 18px;
+            line-height: 1.8;
+            color: #333;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            min-height: 100px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            margin: 15px 0;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .timer {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .results {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .result-label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .result-value {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+        }
+
+        @media (max-width: 600px) {
+            nav {
+                flex-wrap: wrap;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .result-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⌨️ TypeMaster</h1>
+            <p class="subtitle">Improve your typing speed and accuracy</p>
+            <nav>
+                <a href="/typing/">Home</a>
+                <a href="/typing/api/stats">My Stats</a>
+                <a href="/typing/api/leaderboard">Leaderboard</a>
+                <a href="/typing/api/history">History</a>
+            </nav>
+        </header>
+
+        <div class="content">
+            <div class="stats-grid" id="stats-container">
+                <div class="stat-card">
+                    <div class="stat-label">Average WPM</div>
+                    <div class="stat-value" id="avg-wpm">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Best WPM</div>
+                    <div class="stat-value" id="best-wpm">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Accuracy</div>
+                    <div class="stat-value" id="accuracy">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Tests</div>
+                    <div class="stat-value" id="total-tests">-</div>
+                </div>
+            </div>
+
+            <div class="practice-section">
+                <h2>Typing Test</h2>
+
+                <div class="typing-area">
+                    <div class="timer" id="timer">0:00</div>
+
+                    <div class="typing-text" id="typing-text">
+                        The quick brown fox jumps over the lazy dog. This is a typing test to measure your speed and accuracy.
+                    </div>
+
+                    <textarea
+                        id="typing-input"
+                        placeholder="Click here and start typing..."
+                        spellcheck="false"
+                    ></textarea>
+
+                    <div class="controls">
+                        <button id="start-btn" onclick="startTest()">Start Test</button>
+                        <button id="reset-btn" onclick="resetTest()">Reset</button>
+                        <button id="submit-btn" onclick="submitTest()" style="display: none;">Submit</button>
+                    </div>
+                </div>
+
+                <div class="results" id="results">
+                    <h3>Test Results</h3>
+                    <div class="result-row">
+                        <div class="result-label">Words Per Minute (WPM):</div>
+                        <div class="result-value" id="result-wpm">-</div>
+                    </div>
+                    <div class="result-row">
+                        <div class="result-label">Accuracy:</div>
+                        <div class="result-value" id="result-accuracy">-</div>
+                    </div>
+                    <div class="result-row">
+                        <div class="result-label">Errors:</div>
+                        <div class="result-value" id="result-errors">-</div>
+                    </div>
+                    <div class="result-row">
+                        <div class="result-label">Time Spent:</div>
+                        <div class="result-value" id="result-time">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 TypeMaster. Keep practicing to improve your typing!</p>
+        </div>
+    </div>
+
+    <script>
+        let startTime = null;
+        let isTestActive = false;
+        let timerInterval = null;
+
+        // Load user stats on page load
+        window.addEventListener('load', function() {
+            fetch('/typing/api/stats')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const stats = data.data;
+                        document.getElementById('avg-wpm').textContent = (stats.average_wpm || 0).toFixed(1);
+                        document.getElementById('best-wpm').textContent = (stats.best_wpm || 0).toFixed(1);
+                        document.getElementById('accuracy').textContent = (stats.average_accuracy || 0).toFixed(1) + '%';
+                        document.getElementById('total-tests').textContent = stats.total_tests || 0;
+                    }
+                })
+                .catch(e => console.error('Failed to load stats:', e));
+        });
+
+        function startTest() {
+            isTestActive = true;
+            startTime = Date.now();
+            document.getElementById('typing-input').focus();
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('submit-btn').style.display = 'inline-block';
+            document.getElementById('typing-input').disabled = false;
+            document.getElementById('results').classList.remove('show');
+
+            timerInterval = setInterval(function() {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('timer').textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+            }, 100);
+        }
+
+        function resetTest() {
+            isTestActive = false;
+            startTime = null;
+            document.getElementById('typing-input').value = '';
+            document.getElementById('typing-input').disabled = true;
+            document.getElementById('timer').textContent = '0:00';
+            document.getElementById('start-btn').style.display = 'inline-block';
+            document.getElementById('submit-btn').style.display = 'none';
+            document.getElementById('results').classList.remove('show');
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        function submitTest() {
+            if (!isTestActive || !startTime) return;
+
+            isTestActive = false;
+            if (timerInterval) clearInterval(timerInterval);
+
+            const typed = document.getElementById('typing-input').value;
+            const expected = document.getElementById('typing-text').textContent;
+            const timeSpent = (Date.now() - startTime) / 1000;
+
+            // Calculate errors (simplified)
+            let errors = 0;
+            const minLen = Math.min(typed.length, expected.length);
+            for (let i = 0; i < minLen; i++) {
+                if (typed[i] !== expected[i]) errors++;
+            }
+            errors += Math.abs(typed.length - expected.length);
+
+            // Save result
+            fetch('/typing/api/save_result', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: typed,
+                    time_spent: timeSpent,
+                    error_count: Math.max(0, errors),
+                    test_mode: 'paragraphs'
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('result-wpm').textContent = data.data.wpm.toFixed(1);
+                    document.getElementById('result-accuracy').textContent = data.data.accuracy.toFixed(1) + '%';
+                    document.getElementById('result-errors').textContent = Math.max(0, errors);
+                    document.getElementById('result-time').textContent = timeSpent.toFixed(1) + 's';
+                    document.getElementById('results').classList.add('show');
+                    document.getElementById('typing-input').disabled = true;
+                    document.getElementById('submit-btn').style.display = 'none';
+                    document.getElementById('start-btn').style.display = 'inline-block';
+                    // Reload stats
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    alert('Error saving result: ' + data.error);
+                }
+            })
+            .catch(e => {
+                console.error('Error:', e);
+                alert('Failed to save result');
+            });
+        }
+
+        // Enable input on test start only
+        document.getElementById('typing-input').disabled = true;
+    </script>
+</body>
+</html>

@@ -7,390 +7,987 @@ import (
 	"time"
 )
 
-// Repository handles data access for math operations
+// Repository handles all database operations for the math app
 type Repository struct {
 	db *sql.DB
 }
 
-// NewRepository creates a new math repository
+// NewRepository creates a new repository instance
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-// SaveSolution saves a problem solution to the database
-func (r *Repository) SaveSolution(ctx context.Context, solution *ProblemSolution) (uint, error) {
-	if err := solution.Validate(); err != nil {
-		return 0, fmt.Errorf("invalid solution: %w", err)
+// === USER OPERATIONS ===
+
+// SaveUser saves or updates a user
+func (r *Repository) SaveUser(ctx context.Context, user *User) error {
+	if err := user.Validate(); err != nil {
+		return fmt.Errorf("invalid user: %w", err)
 	}
+
+	user.LastActive = time.Now()
 
 	query := `
-		INSERT INTO math_solutions (
-			user_id, problem_id, attempt, correct, time_spent, created_at
-		) VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO users (username, created_at, last_active)
+		VALUES (?, ?, ?)
+		ON CONFLICT(username) DO UPDATE SET last_active = excluded.last_active
 	`
 
-	res, err := r.db.ExecContext(
-		ctx,
-		query,
-		solution.UserID,
-		solution.ProblemID,
-		solution.Attempt,
-		solution.Correct,
-		solution.TimeSpent,
-		time.Now(),
-	)
+	result, err := r.db.ExecContext(ctx, query, user.Username, time.Now(), user.LastActive)
 	if err != nil {
-		return 0, fmt.Errorf("failed to save solution: %w", err)
+		return fmt.Errorf("failed to save user: %w", err)
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get last insert id: %w", err)
+	id, err := result.LastInsertId()
+	if err == nil {
+		user.ID = uint(id)
 	}
 
-	return uint(id), nil
+	return nil
 }
 
-// SaveSession saves a completed quiz session
-func (r *Repository) SaveSession(ctx context.Context, session *QuizSession) (uint, error) {
-	if err := session.Validate(); err != nil {
-		return 0, fmt.Errorf("invalid session: %w", err)
-	}
+// GetUser retrieves a user by ID
+func (r *Repository) GetUser(ctx context.Context, userID uint) (*User, error) {
+	user := &User{}
+	query := `SELECT id, username, created_at, last_active FROM users WHERE id = ?`
 
-	query := `
-		INSERT INTO math_sessions (
-			user_id, problem_type, difficulty, total_problems, correct_answers,
-			score, time_spent, started_at, completed_at, average_time_per_problem
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-
-	res, err := r.db.ExecContext(
-		ctx,
-		query,
-		session.UserID,
-		session.ProblemType,
-		session.Difficulty,
-		session.TotalProblems,
-		session.CorrectAnswers,
-		session.Score,
-		session.TimeSpent,
-		session.StartedAt,
-		session.CompletedAt,
-		session.AverageTimePerProblem,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("failed to save session: %w", err)
-	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get last insert id: %w", err)
-	}
-
-	return uint(id), nil
-}
-
-// GetUserStats retrieves aggregated statistics for a user
-func (r *Repository) GetUserStats(ctx context.Context, userID uint) (*UserMathStats, error) {
-	query := `
-		SELECT
-			user_id,
-			total_problems,
-			correct_answers,
-			accuracy,
-			average_time_per_problem,
-			best_score,
-			total_time_spent,
-			sessions_completed,
-			last_updated
-		FROM math_user_stats
-		WHERE user_id = ?
-	`
-
-	row := r.db.QueryRowContext(ctx, query, userID)
-	stats := &UserMathStats{}
-
-	err := row.Scan(
-		&stats.UserID,
-		&stats.TotalProblems,
-		&stats.CorrectAnswers,
-		&stats.Accuracy,
-		&stats.AverageTimePerProblem,
-		&stats.BestScore,
-		&stats.TotalTimeSpent,
-		&stats.SessionsCompleted,
-		&stats.LastUpdated,
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&user.ID, &user.Username, &user.CreatedAt, &user.LastActive,
 	)
 
-	if err == sql.ErrNoRows {
-		return &UserMathStats{UserID: userID}, nil
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user stats: %w", err)
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	return stats, nil
+	return user, nil
 }
 
-// GetProblemTypeStats retrieves stats for a specific problem type
-func (r *Repository) GetProblemTypeStats(ctx context.Context, userID uint, problemType ProblemType) (*MathResult, error) {
+// GetUserByUsername retrieves a user by username
+func (r *Repository) GetUserByUsername(ctx context.Context, username string) (*User, error) {
+	user := &User{}
+	query := `SELECT id, username, created_at, last_active FROM users WHERE username = ?`
+
+	err := r.db.QueryRowContext(ctx, query, username).Scan(
+		&user.ID, &user.Username, &user.CreatedAt, &user.LastActive,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	return user, nil
+}
+
+// GetAllUsers retrieves all users with pagination
+func (r *Repository) GetAllUsers(ctx context.Context, limit int, offset int) ([]*User, error) {
+	query := `SELECT id, username, created_at, last_active FROM users ORDER BY id LIMIT ? OFFSET ?`
+
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		user := &User{}
+		if err := rows.Scan(&user.ID, &user.Username, &user.CreatedAt, &user.LastActive); err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, user)
+	}
+
+	return users, rows.Err()
+}
+
+// === MATH RESULT OPERATIONS ===
+
+// SaveResult saves a practice session result
+func (r *Repository) SaveResult(ctx context.Context, result *MathResult) error {
+	if err := result.Validate(); err != nil {
+		return fmt.Errorf("invalid result: %w", err)
+	}
+
+	result.CalculateAccuracy()
+	result.CalculateAverageTime()
+	result.Timestamp = time.Now()
+
 	query := `
-		SELECT
-			CAST(? AS TEXT) as problem_type,
-			CAST('' AS TEXT) as difficulty,
-			COUNT(*) as total_attempts,
-			SUM(CASE WHEN correct = 1 THEN 1 ELSE 0 END) as correct_answers,
-			(SUM(CASE WHEN correct = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as accuracy,
-			AVG(time_spent) as average_time_per_problem
-		FROM math_solutions
-		WHERE user_id = ? AND problem_id IN (
-			SELECT id FROM math_problems WHERE type = ?
-		)
+		INSERT INTO results (user_id, mode, difficulty, total_questions, correct_answers, total_time, average_time, accuracy, timestamp)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	row := r.db.QueryRowContext(ctx, query, problemType, userID, problemType)
+	res, err := r.db.ExecContext(ctx, query,
+		result.UserID, result.Mode, result.Difficulty, result.TotalQuestions,
+		result.CorrectAnswers, result.TotalTime, result.AverageTime, result.Accuracy, result.Timestamp,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to save result: %w", err)
+	}
+
+	id, _ := res.LastInsertId()
+	result.ID = uint(id)
+
+	return nil
+}
+
+// GetResult retrieves a result by ID
+func (r *Repository) GetResult(ctx context.Context, resultID uint) (*MathResult, error) {
 	result := &MathResult{}
+	query := `
+		SELECT id, user_id, mode, difficulty, total_questions, correct_answers, 
+		       total_time, average_time, accuracy, timestamp
+		FROM results WHERE id = ?
+	`
 
-	var difficulty string
-	err := row.Scan(
-		&result.ProblemType,
-		&difficulty,
-		&result.TotalAttempts,
-		&result.CorrectAnswers,
-		&result.Accuracy,
-		&result.AverageTimePerProblem,
+	err := r.db.QueryRowContext(ctx, query, resultID).Scan(
+		&result.ID, &result.UserID, &result.Mode, &result.Difficulty, &result.TotalQuestions,
+		&result.CorrectAnswers, &result.TotalTime, &result.AverageTime, &result.Accuracy, &result.Timestamp,
 	)
 
-	if err == sql.ErrNoRows {
-		return &MathResult{ProblemType: problemType}, nil
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get problem type stats: %w", err)
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("result not found")
+		}
+		return nil, fmt.Errorf("failed to get result: %w", err)
 	}
 
 	return result, nil
 }
 
-// GetLeaderboard retrieves top users by accuracy
-func (r *Repository) GetLeaderboard(ctx context.Context, limit int) ([]UserMathStats, error) {
-	if limit <= 0 || limit > 1000 {
-		limit = 10
-	}
-
+// GetResultsByUser retrieves results for a user with pagination
+func (r *Repository) GetResultsByUser(ctx context.Context, userID uint, limit int, offset int) ([]*MathResult, error) {
 	query := `
-		SELECT
-			user_id,
-			total_problems,
-			correct_answers,
-			accuracy,
-			average_time_per_problem,
-			best_score,
-			total_time_spent,
-			sessions_completed,
-			last_updated
-		FROM math_user_stats
-		WHERE sessions_completed > 0
-		ORDER BY accuracy DESC, best_score DESC
-		LIMIT ?
+		SELECT id, user_id, mode, difficulty, total_questions, correct_answers,
+		       total_time, average_time, accuracy, timestamp
+		FROM results WHERE user_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, limit)
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query leaderboard: %w", err)
+		return nil, fmt.Errorf("failed to get results: %w", err)
 	}
 	defer rows.Close()
 
-	var stats []UserMathStats
+	var results []*MathResult
 	for rows.Next() {
-		var s UserMathStats
-		if err := rows.Scan(
-			&s.UserID,
-			&s.TotalProblems,
-			&s.CorrectAnswers,
-			&s.Accuracy,
-			&s.AverageTimePerProblem,
-			&s.BestScore,
-			&s.TotalTimeSpent,
-			&s.SessionsCompleted,
-			&s.LastUpdated,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan leaderboard row: %w", err)
+		result := &MathResult{}
+		if err := rows.Scan(&result.ID, &result.UserID, &result.Mode, &result.Difficulty,
+			&result.TotalQuestions, &result.CorrectAnswers, &result.TotalTime, &result.AverageTime,
+			&result.Accuracy, &result.Timestamp); err != nil {
+			return nil, fmt.Errorf("failed to scan result: %w", err)
 		}
-		stats = append(stats, s)
+		results = append(results, result)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("leaderboard query error: %w", err)
+	return results, rows.Err()
+}
+
+// GetResultCount returns the total count of results for a user
+func (r *Repository) GetResultCount(ctx context.Context, userID uint) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM results WHERE user_id = ?`
+
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get result count: %w", err)
+	}
+
+	return count, nil
+}
+
+// DeleteResult deletes a result
+func (r *Repository) DeleteResult(ctx context.Context, resultID uint) error {
+	query := `DELETE FROM results WHERE id = ?`
+
+	result, err := r.db.ExecContext(ctx, query, resultID)
+	if err != nil {
+		return fmt.Errorf("failed to delete result: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("result not found")
+	}
+
+	return nil
+}
+
+// === QUESTION HISTORY OPERATIONS ===
+
+// SaveQuestionHistory saves a question attempt
+func (r *Repository) SaveQuestionHistory(ctx context.Context, history *QuestionHistory) error {
+	if err := history.Validate(); err != nil {
+		return fmt.Errorf("invalid question history: %w", err)
+	}
+
+	history.Timestamp = time.Now()
+
+	query := `
+		INSERT INTO question_history (user_id, question, user_answer, correct_answer, is_correct, time_taken, fact_family, mode, timestamp)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	res, err := r.db.ExecContext(ctx, query,
+		history.UserID, history.Question, history.UserAnswer, history.CorrectAnswer,
+		history.IsCorrect, history.TimeTaken, history.FactFamily, history.Mode, history.Timestamp,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to save question history: %w", err)
+	}
+
+	id, _ := res.LastInsertId()
+	history.ID = uint(id)
+
+	return nil
+}
+
+// GetQuestionHistory retrieves question history by ID
+func (r *Repository) GetQuestionHistory(ctx context.Context, historyID uint) (*QuestionHistory, error) {
+	history := &QuestionHistory{}
+	query := `
+		SELECT id, user_id, question, user_answer, correct_answer, is_correct, time_taken, fact_family, mode, timestamp
+		FROM question_history WHERE id = ?
+	`
+
+	err := r.db.QueryRowContext(ctx, query, historyID).Scan(
+		&history.ID, &history.UserID, &history.Question, &history.UserAnswer, &history.CorrectAnswer,
+		&history.IsCorrect, &history.TimeTaken, &history.FactFamily, &history.Mode, &history.Timestamp,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("question history not found")
+		}
+		return nil, fmt.Errorf("failed to get question history: %w", err)
+	}
+
+	return history, nil
+}
+
+// GetHistoryByUser retrieves question history for a user
+func (r *Repository) GetHistoryByUser(ctx context.Context, userID uint, limit int, offset int) ([]*QuestionHistory, error) {
+	query := `
+		SELECT id, user_id, question, user_answer, correct_answer, is_correct, time_taken, fact_family, mode, timestamp
+		FROM question_history WHERE user_id = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get history: %w", err)
+	}
+	defer rows.Close()
+
+	var histories []*QuestionHistory
+	for rows.Next() {
+		history := &QuestionHistory{}
+		if err := rows.Scan(&history.ID, &history.UserID, &history.Question, &history.UserAnswer,
+			&history.CorrectAnswer, &history.IsCorrect, &history.TimeTaken, &history.FactFamily,
+			&history.Mode, &history.Timestamp); err != nil {
+			return nil, fmt.Errorf("failed to scan history: %w", err)
+		}
+		histories = append(histories, history)
+	}
+
+	return histories, rows.Err()
+}
+
+// === MISTAKE OPERATIONS ===
+
+// SaveMistake records a mistake
+func (r *Repository) SaveMistake(ctx context.Context, mistake *Mistake) error {
+	if err := mistake.Validate(); err != nil {
+		return fmt.Errorf("invalid mistake: %w", err)
+	}
+
+	mistake.LastError = time.Now()
+
+	query := `
+		INSERT INTO mistakes (user_id, question, correct_answer, user_answer, mode, fact_family, error_count, last_error)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(user_id, question) DO UPDATE SET error_count = error_count + 1, last_error = excluded.last_error
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		mistake.UserID, mistake.Question, mistake.CorrectAnswer, mistake.UserAnswer,
+		mistake.Mode, mistake.FactFamily, mistake.ErrorCount, mistake.LastError,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to save mistake: %w", err)
+	}
+
+	return nil
+}
+
+// GetMistake retrieves a specific mistake
+func (r *Repository) GetMistake(ctx context.Context, userID uint, question string) (*Mistake, error) {
+	mistake := &Mistake{}
+	query := `
+		SELECT id, user_id, question, correct_answer, user_answer, mode, fact_family, error_count, last_error
+		FROM mistakes WHERE user_id = ? AND question = ?
+	`
+
+	err := r.db.QueryRowContext(ctx, query, userID, question).Scan(
+		&mistake.ID, &mistake.UserID, &mistake.Question, &mistake.CorrectAnswer, &mistake.UserAnswer,
+		&mistake.Mode, &mistake.FactFamily, &mistake.ErrorCount, &mistake.LastError,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("mistake not found")
+		}
+		return nil, fmt.Errorf("failed to get mistake: %w", err)
+	}
+
+	return mistake, nil
+}
+
+// GetMistakesByUser retrieves mistakes for a user
+func (r *Repository) GetMistakesByUser(ctx context.Context, userID uint, limit int) ([]*Mistake, error) {
+	query := `
+		SELECT id, user_id, question, correct_answer, user_answer, mode, fact_family, error_count, last_error
+		FROM mistakes WHERE user_id = ? ORDER BY error_count DESC LIMIT ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get mistakes: %w", err)
+	}
+	defer rows.Close()
+
+	var mistakes []*Mistake
+	for rows.Next() {
+		mistake := &Mistake{}
+		if err := rows.Scan(&mistake.ID, &mistake.UserID, &mistake.Question, &mistake.CorrectAnswer,
+			&mistake.UserAnswer, &mistake.Mode, &mistake.FactFamily, &mistake.ErrorCount, &mistake.LastError); err != nil {
+			return nil, fmt.Errorf("failed to scan mistake: %w", err)
+		}
+		mistakes = append(mistakes, mistake)
+	}
+
+	return mistakes, rows.Err()
+}
+
+// GetMistakesByFactFamily retrieves mistakes grouped by fact family
+func (r *Repository) GetMistakesByFactFamily(ctx context.Context, userID uint, factFamily string) ([]*Mistake, error) {
+	query := `
+		SELECT id, user_id, question, correct_answer, user_answer, mode, fact_family, error_count, last_error
+		FROM mistakes WHERE user_id = ? AND fact_family = ? ORDER BY error_count DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, factFamily)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get mistakes: %w", err)
+	}
+	defer rows.Close()
+
+	var mistakes []*Mistake
+	for rows.Next() {
+		mistake := &Mistake{}
+		if err := rows.Scan(&mistake.ID, &mistake.UserID, &mistake.Question, &mistake.CorrectAnswer,
+			&mistake.UserAnswer, &mistake.Mode, &mistake.FactFamily, &mistake.ErrorCount, &mistake.LastError); err != nil {
+			return nil, fmt.Errorf("failed to scan mistake: %w", err)
+		}
+		mistakes = append(mistakes, mistake)
+	}
+
+	return mistakes, rows.Err()
+}
+
+// === MASTERY OPERATIONS ===
+
+// SaveMastery saves or updates mastery for a fact
+func (r *Repository) SaveMastery(ctx context.Context, mastery *Mastery) error {
+	if err := mastery.Validate(); err != nil {
+		return fmt.Errorf("invalid mastery: %w", err)
+	}
+
+	mastery.LastPracticed = time.Now()
+
+	query := `
+		INSERT INTO mastery (user_id, fact, mode, correct_streak, total_attempts, mastery_level, last_practiced, average_response_time, fastest_time, slowest_time)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(user_id, fact, mode) DO UPDATE SET
+			correct_streak = excluded.correct_streak,
+			total_attempts = excluded.total_attempts,
+			mastery_level = excluded.mastery_level,
+			last_practiced = excluded.last_practiced,
+			average_response_time = excluded.average_response_time,
+			fastest_time = excluded.fastest_time,
+			slowest_time = excluded.slowest_time
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		mastery.UserID, mastery.Fact, mastery.Mode, mastery.CorrectStreak, mastery.TotalAttempts,
+		mastery.MasteryLevel, mastery.LastPracticed, mastery.AverageResponseTime,
+		mastery.FastestTime, mastery.SlowestTime,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to save mastery: %w", err)
+	}
+
+	return nil
+}
+
+// GetMastery retrieves mastery for a specific fact
+func (r *Repository) GetMastery(ctx context.Context, userID uint, fact string, mode string) (*Mastery, error) {
+	mastery := &Mastery{}
+	query := `
+		SELECT id, user_id, fact, mode, correct_streak, total_attempts, mastery_level, last_practiced, average_response_time, fastest_time, slowest_time
+		FROM mastery WHERE user_id = ? AND fact = ? AND mode = ?
+	`
+
+	err := r.db.QueryRowContext(ctx, query, userID, fact, mode).Scan(
+		&mastery.ID, &mastery.UserID, &mastery.Fact, &mastery.Mode, &mastery.CorrectStreak,
+		&mastery.TotalAttempts, &mastery.MasteryLevel, &mastery.LastPracticed, &mastery.AverageResponseTime,
+		&mastery.FastestTime, &mastery.SlowestTime,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("mastery not found")
+		}
+		return nil, fmt.Errorf("failed to get mastery: %w", err)
+	}
+
+	return mastery, nil
+}
+
+// GetMasteryByUser retrieves all mastery records for a user
+func (r *Repository) GetMasteryByUser(ctx context.Context, userID uint, mode string) ([]*Mastery, error) {
+	query := `
+		SELECT id, user_id, fact, mode, correct_streak, total_attempts, mastery_level, last_practiced, average_response_time, fastest_time, slowest_time
+		FROM mastery WHERE user_id = ? AND mode = ? ORDER BY mastery_level DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, mode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get mastery: %w", err)
+	}
+	defer rows.Close()
+
+	var masteries []*Mastery
+	for rows.Next() {
+		mastery := &Mastery{}
+		if err := rows.Scan(&mastery.ID, &mastery.UserID, &mastery.Fact, &mastery.Mode,
+			&mastery.CorrectStreak, &mastery.TotalAttempts, &mastery.MasteryLevel, &mastery.LastPracticed,
+			&mastery.AverageResponseTime, &mastery.FastestTime, &mastery.SlowestTime); err != nil {
+			return nil, fmt.Errorf("failed to scan mastery: %w", err)
+		}
+		masteries = append(masteries, mastery)
+	}
+
+	return masteries, rows.Err()
+}
+
+// === LEARNING PROFILE OPERATIONS ===
+
+// SaveLearningProfile saves or updates learning profile
+func (r *Repository) SaveLearningProfile(ctx context.Context, profile *LearningProfile) error {
+	if err := profile.Validate(); err != nil {
+		return fmt.Errorf("invalid learning profile: %w", err)
+	}
+
+	profile.ProfileUpdated = time.Now()
+
+	query := `
+		INSERT INTO learning_profile (user_id, learning_style, preferred_time_of_day, attention_span_seconds, best_streak_time, weak_time_of_day, avg_session_length, total_practice_time, profile_updated)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(user_id) DO UPDATE SET
+			learning_style = excluded.learning_style,
+			preferred_time_of_day = excluded.preferred_time_of_day,
+			attention_span_seconds = excluded.attention_span_seconds,
+			best_streak_time = excluded.best_streak_time,
+			weak_time_of_day = excluded.weak_time_of_day,
+			avg_session_length = excluded.avg_session_length,
+			total_practice_time = excluded.total_practice_time,
+			profile_updated = excluded.profile_updated
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		profile.UserID, profile.LearningStyle, profile.PreferredTimeOfDay, profile.AttentionSpanSeconds,
+		profile.BestStreakTime, profile.WeakTimeOfDay, profile.AvgSessionLength, profile.TotalPracticeTime,
+		profile.ProfileUpdated,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to save learning profile: %w", err)
+	}
+
+	return nil
+}
+
+// GetLearningProfile retrieves learning profile for a user
+func (r *Repository) GetLearningProfile(ctx context.Context, userID uint) (*LearningProfile, error) {
+	profile := &LearningProfile{}
+	query := `
+		SELECT id, user_id, learning_style, preferred_time_of_day, attention_span_seconds, best_streak_time, weak_time_of_day, avg_session_length, total_practice_time, profile_updated
+		FROM learning_profile WHERE user_id = ?
+	`
+
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&profile.ID, &profile.UserID, &profile.LearningStyle, &profile.PreferredTimeOfDay,
+		&profile.AttentionSpanSeconds, &profile.BestStreakTime, &profile.WeakTimeOfDay,
+		&profile.AvgSessionLength, &profile.TotalPracticeTime, &profile.ProfileUpdated,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("learning profile not found")
+		}
+		return nil, fmt.Errorf("failed to get learning profile: %w", err)
+	}
+
+	return profile, nil
+}
+
+// === PERFORMANCE PATTERN OPERATIONS ===
+
+// SavePerformancePattern saves or updates performance pattern
+func (r *Repository) SavePerformancePattern(ctx context.Context, pattern *PerformancePattern) error {
+	if err := pattern.Validate(); err != nil {
+		return fmt.Errorf("invalid performance pattern: %w", err)
+	}
+
+	pattern.LastUpdated = time.Now()
+
+	query := `
+		INSERT INTO performance_patterns (user_id, hour_of_day, day_of_week, average_accuracy, average_speed, session_count, last_updated)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(user_id, hour_of_day, day_of_week) DO UPDATE SET
+			average_accuracy = excluded.average_accuracy,
+			average_speed = excluded.average_speed,
+			session_count = excluded.session_count,
+			last_updated = excluded.last_updated
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		pattern.UserID, pattern.HourOfDay, pattern.DayOfWeek, pattern.AverageAccuracy,
+		pattern.AverageSpeed, pattern.SessionCount, pattern.LastUpdated,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to save performance pattern: %w", err)
+	}
+
+	return nil
+}
+
+// GetPerformancePattern retrieves performance pattern for specific time
+func (r *Repository) GetPerformancePattern(ctx context.Context, userID uint, hour int, dayOfWeek int) (*PerformancePattern, error) {
+	pattern := &PerformancePattern{}
+	query := `
+		SELECT id, user_id, hour_of_day, day_of_week, average_accuracy, average_speed, session_count, last_updated
+		FROM performance_patterns WHERE user_id = ? AND hour_of_day = ? AND day_of_week = ?
+	`
+
+	err := r.db.QueryRowContext(ctx, query, userID, hour, dayOfWeek).Scan(
+		&pattern.ID, &pattern.UserID, &pattern.HourOfDay, &pattern.DayOfWeek, &pattern.AverageAccuracy,
+		&pattern.AverageSpeed, &pattern.SessionCount, &pattern.LastUpdated,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("performance pattern not found")
+		}
+		return nil, fmt.Errorf("failed to get performance pattern: %w", err)
+	}
+
+	return pattern, nil
+}
+
+// GetPatternsByUser retrieves all performance patterns for a user
+func (r *Repository) GetPatternsByUser(ctx context.Context, userID uint) ([]*PerformancePattern, error) {
+	query := `
+		SELECT id, user_id, hour_of_day, day_of_week, average_accuracy, average_speed, session_count, last_updated
+		FROM performance_patterns WHERE user_id = ? ORDER BY average_accuracy DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get patterns: %w", err)
+	}
+	defer rows.Close()
+
+	var patterns []*PerformancePattern
+	for rows.Next() {
+		pattern := &PerformancePattern{}
+		if err := rows.Scan(&pattern.ID, &pattern.UserID, &pattern.HourOfDay, &pattern.DayOfWeek,
+			&pattern.AverageAccuracy, &pattern.AverageSpeed, &pattern.SessionCount, &pattern.LastUpdated); err != nil {
+			return nil, fmt.Errorf("failed to scan pattern: %w", err)
+		}
+		patterns = append(patterns, pattern)
+	}
+
+	return patterns, rows.Err()
+}
+
+// === REPETITION SCHEDULE OPERATIONS ===
+
+// SaveRepetitionSchedule saves or updates repetition schedule
+func (r *Repository) SaveRepetitionSchedule(ctx context.Context, schedule *RepetitionSchedule) error {
+	if err := schedule.Validate(); err != nil {
+		return fmt.Errorf("invalid repetition schedule: %w", err)
+	}
+
+	query := `
+		INSERT INTO repetition_schedule (user_id, fact, mode, next_review, interval_days, ease_factor, review_count)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(user_id, fact, mode) DO UPDATE SET
+			next_review = excluded.next_review,
+			interval_days = excluded.interval_days,
+			ease_factor = excluded.ease_factor,
+			review_count = excluded.review_count
+	`
+
+	res, err := r.db.ExecContext(ctx, query,
+		schedule.UserID, schedule.Fact, schedule.Mode, schedule.NextReview,
+		schedule.IntervalDays, schedule.EaseFactor, schedule.ReviewCount,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to save repetition schedule: %w", err)
+	}
+
+	id, _ := res.LastInsertId()
+	schedule.ID = uint(id)
+
+	return nil
+}
+
+// GetRepetitionSchedule retrieves repetition schedule for a fact
+func (r *Repository) GetRepetitionSchedule(ctx context.Context, userID uint, fact string, mode string) (*RepetitionSchedule, error) {
+	schedule := &RepetitionSchedule{}
+	query := `
+		SELECT id, user_id, fact, mode, next_review, interval_days, ease_factor, review_count
+		FROM repetition_schedule WHERE user_id = ? AND fact = ? AND mode = ?
+	`
+
+	err := r.db.QueryRowContext(ctx, query, userID, fact, mode).Scan(
+		&schedule.ID, &schedule.UserID, &schedule.Fact, &schedule.Mode, &schedule.NextReview,
+		&schedule.IntervalDays, &schedule.EaseFactor, &schedule.ReviewCount,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("repetition schedule not found")
+		}
+		return nil, fmt.Errorf("failed to get repetition schedule: %w", err)
+	}
+
+	return schedule, nil
+}
+
+// GetDueRepetitions retrieves facts due for review
+func (r *Repository) GetDueRepetitions(ctx context.Context, userID uint, limit int) ([]*RepetitionSchedule, error) {
+	query := `
+		SELECT id, user_id, fact, mode, next_review, interval_days, ease_factor, review_count
+		FROM repetition_schedule WHERE user_id = ? AND next_review <= datetime('now') ORDER BY next_review ASC LIMIT ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get due repetitions: %w", err)
+	}
+	defer rows.Close()
+
+	var schedules []*RepetitionSchedule
+	for rows.Next() {
+		schedule := &RepetitionSchedule{}
+		if err := rows.Scan(&schedule.ID, &schedule.UserID, &schedule.Fact, &schedule.Mode,
+			&schedule.NextReview, &schedule.IntervalDays, &schedule.EaseFactor, &schedule.ReviewCount); err != nil {
+			return nil, fmt.Errorf("failed to scan schedule: %w", err)
+		}
+		schedules = append(schedules, schedule)
+	}
+
+	return schedules, rows.Err()
+}
+
+// GetAllRepetitions retrieves all repetition schedules for a user
+func (r *Repository) GetAllRepetitions(ctx context.Context, userID uint) ([]*RepetitionSchedule, error) {
+	query := `
+		SELECT id, user_id, fact, mode, next_review, interval_days, ease_factor, review_count
+		FROM repetition_schedule WHERE user_id = ? ORDER BY next_review ASC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repetitions: %w", err)
+	}
+	defer rows.Close()
+
+	var schedules []*RepetitionSchedule
+	for rows.Next() {
+		schedule := &RepetitionSchedule{}
+		if err := rows.Scan(&schedule.ID, &schedule.UserID, &schedule.Fact, &schedule.Mode,
+			&schedule.NextReview, &schedule.IntervalDays, &schedule.EaseFactor, &schedule.ReviewCount); err != nil {
+			return nil, fmt.Errorf("failed to scan schedule: %w", err)
+		}
+		schedules = append(schedules, schedule)
+	}
+
+	return schedules, rows.Err()
+}
+
+// === COMPLEX QUERY OPERATIONS ===
+
+// GetWeakFactFamilies retrieves fact families with most errors
+func (r *Repository) GetWeakFactFamilies(ctx context.Context, userID uint, minErrors int) (map[string]int, error) {
+	query := `
+		SELECT fact_family, COUNT(*) as error_count
+		FROM mistakes
+		WHERE user_id = ?
+		GROUP BY fact_family
+		HAVING COUNT(*) >= ?
+		ORDER BY error_count DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, minErrors)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get weak fact families: %w", err)
+	}
+	defer rows.Close()
+
+	weakFamilies := make(map[string]int)
+	for rows.Next() {
+		var family string
+		var count int
+		if err := rows.Scan(&family, &count); err != nil {
+			return nil, fmt.Errorf("failed to scan: %w", err)
+		}
+		weakFamilies[family] = count
+	}
+
+	return weakFamilies, rows.Err()
+}
+
+// UserStats represents aggregated user statistics
+type UserStats struct {
+	UserID        uint
+	TotalSessions int
+	AverageAccuracy float64
+	BestAccuracy  float64
+	TotalQuestions int
+	CorrectAnswers int
+	TotalMastered  int
+	TotalMistakes  int
+	AverageWPM    float64
+}
+
+// GetUserStats retrieves aggregated statistics for a user
+func (r *Repository) GetUserStats(ctx context.Context, userID uint) (*UserStats, error) {
+	stats := &UserStats{UserID: userID}
+
+	// Get session stats
+	sessionQuery := `
+		SELECT COUNT(*) as sessions, AVG(accuracy) as avg_acc, MAX(accuracy) as best_acc
+		FROM results WHERE user_id = ?
+	`
+	err := r.db.QueryRowContext(ctx, sessionQuery, userID).Scan(
+		&stats.TotalSessions, &stats.AverageAccuracy, &stats.BestAccuracy,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to get session stats: %w", err)
+	}
+
+	// Get question stats
+	questionQuery := `
+		SELECT COUNT(*) as total, SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) as correct
+		FROM question_history WHERE user_id = ?
+	`
+	err = r.db.QueryRowContext(ctx, questionQuery, userID).Scan(
+		&stats.TotalQuestions, &stats.CorrectAnswers,
+	)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to get question stats: %w", err)
+	}
+
+	// Get mastery count
+	masteryQuery := `SELECT COUNT(*) FROM mastery WHERE user_id = ? AND mastery_level >= 80`
+	err = r.db.QueryRowContext(ctx, masteryQuery, userID).Scan(&stats.TotalMastered)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to get mastery count: %w", err)
+	}
+
+	// Get mistake count
+	mistakeQuery := `SELECT COUNT(*) FROM mistakes WHERE user_id = ?`
+	err = r.db.QueryRowContext(ctx, mistakeQuery, userID).Scan(&stats.TotalMistakes)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to get mistake count: %w", err)
 	}
 
 	return stats, nil
 }
 
-// GetUserSessions retrieves paginated session history for a user
-func (r *Repository) GetUserSessions(ctx context.Context, userID uint, limit, offset int) ([]QuizSession, error) {
-	if limit <= 0 || limit > 1000 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
+// LeaderboardEntry represents a user's position on the leaderboard
+type LeaderboardEntry struct {
+	UserID    uint
+	Username  string
+	Value     float64
+	Metric    string
+}
+
+// GetLeaderboard retrieves leaderboard rankings
+func (r *Repository) GetLeaderboard(ctx context.Context, metric string, limit int) ([]*LeaderboardEntry, error) {
+	var query string
+	var columnName string
+
+	switch metric {
+	case "accuracy":
+		columnName = "AVG(accuracy)"
+	case "sessions":
+		columnName = "COUNT(*)"
+	case "speed":
+		columnName = "AVG(average_time)"
+	default:
+		columnName = "COUNT(*)"
 	}
 
-	query := `
-		SELECT
-			id,
-			user_id,
-			problem_type,
-			difficulty,
-			total_problems,
-			correct_answers,
-			score,
-			time_spent,
-			started_at,
-			completed_at,
-			average_time_per_problem
-		FROM math_sessions
-		WHERE user_id = ?
-		ORDER BY completed_at DESC
-		LIMIT ? OFFSET ?
-	`
+	// Build query with the appropriate metric
+	query = fmt.Sprintf(`
+		SELECT u.id, u.username, %s as value
+		FROM results r
+		JOIN users u ON r.user_id = u.id
+		GROUP BY r.user_id, u.id, u.username
+		ORDER BY value DESC
+		LIMIT ?
+	`, columnName)
 
-	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query user sessions: %w", err)
+		return nil, fmt.Errorf("failed to get leaderboard: %w", err)
 	}
 	defer rows.Close()
 
-	var sessions []QuizSession
+	var entries []*LeaderboardEntry
 	for rows.Next() {
-		var s QuizSession
-		if err := rows.Scan(
-			&s.ID,
-			&s.UserID,
-			&s.ProblemType,
-			&s.Difficulty,
-			&s.TotalProblems,
-			&s.CorrectAnswers,
-			&s.Score,
-			&s.TimeSpent,
-			&s.StartedAt,
-			&s.CompletedAt,
-			&s.AverageTimePerProblem,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan session row: %w", err)
+		entry := &LeaderboardEntry{Metric: metric}
+		if err := rows.Scan(&entry.UserID, &entry.Username, &entry.Value); err != nil {
+			return nil, fmt.Errorf("failed to scan: %w", err)
 		}
-		sessions = append(sessions, s)
+		entries = append(entries, entry)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("user sessions query error: %w", err)
-	}
-
-	return sessions, nil
+	return entries, rows.Err()
 }
 
-// updateUserStats updates aggregated user statistics
-func (r *Repository) updateUserStats(ctx context.Context, userID uint) error {
-	// Check if stats record exists
-	var count int
-	checkQuery := "SELECT COUNT(*) FROM math_user_stats WHERE user_id = ?"
-	if err := r.db.QueryRowContext(ctx, checkQuery, userID).Scan(&count); err != nil {
-		return fmt.Errorf("failed to check user stats: %w", err)
-	}
+// MistakeAnalysis represents mistake analysis for a user
+type MistakeAnalysis struct {
+	FactFamily string
+	ErrorCount int
+	Severity   string
+}
 
-	// Calculate aggregate statistics from sessions
-	statsQuery := `
-		SELECT
-			COUNT(*) as total_sessions,
-			SUM(total_problems) as total_problems,
-			SUM(correct_answers) as correct_answers,
-			MAX(score) as best_score,
-			SUM(time_spent) as total_time_spent,
-			AVG(average_time_per_problem) as avg_time_per_problem
-		FROM math_sessions
-		WHERE user_id = ? AND completed_at IS NOT NULL
+// GetMistakeAnalysis retrieves mistake analysis grouped by fact family
+func (r *Repository) GetMistakeAnalysis(ctx context.Context, userID uint) ([]*MistakeAnalysis, error) {
+	query := `
+		SELECT fact_family, SUM(error_count) as total_errors
+		FROM mistakes
+		WHERE user_id = ?
+		GROUP BY fact_family
+		ORDER BY total_errors DESC
 	`
 
-	var totalSessions int
-	var totalProblems sql.NullInt64
-	var correctAnswers sql.NullInt64
-	var bestScore sql.NullFloat64
-	var totalTimeSpent sql.NullFloat64
-	var avgTimePerProblem sql.NullFloat64
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get mistake analysis: %w", err)
+	}
+	defer rows.Close()
 
-	if err := r.db.QueryRowContext(ctx, statsQuery, userID).Scan(
-		&totalSessions,
-		&totalProblems,
-		&correctAnswers,
-		&bestScore,
-		&totalTimeSpent,
-		&avgTimePerProblem,
-	); err != nil {
-		return fmt.Errorf("failed to calculate stats: %w", err)
+	var analyses []*MistakeAnalysis
+	for rows.Next() {
+		analysis := &MistakeAnalysis{}
+		if err := rows.Scan(&analysis.FactFamily, &analysis.ErrorCount); err != nil {
+			return nil, fmt.Errorf("failed to scan: %w", err)
+		}
+
+		// Determine severity
+		if analysis.ErrorCount >= 5 {
+			analysis.Severity = "critical"
+		} else if analysis.ErrorCount >= 4 {
+			analysis.Severity = "high"
+		} else if analysis.ErrorCount >= 3 {
+			analysis.Severity = "medium"
+		} else {
+			analysis.Severity = "low"
+		}
+
+		analyses = append(analyses, analysis)
 	}
 
-	// Calculate accuracy
+	return analyses, rows.Err()
+}
+
+// GetRecentActivity retrieves recent activity for a user
+func (r *Repository) GetRecentActivity(ctx context.Context, userID uint, hours int) (map[string]int, error) {
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) as count
+		FROM question_history
+		WHERE user_id = ? AND timestamp >= datetime('now', '-%d hours')
+	`, hours)
+
+	result := make(map[string]int)
+	var count int
+
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to get recent activity: %w", err)
+	}
+
+	result["questions_answered"] = count
+
+	// Get accuracy in recent period
+	accuracyQuery := fmt.Sprintf(`
+		SELECT AVG(CASE WHEN is_correct THEN 1 ELSE 0 END) * 100
+		FROM question_history
+		WHERE user_id = ? AND timestamp >= datetime('now', '-%d hours')
+	`, hours)
+
+	var accuracy sql.NullFloat64
+	err = r.db.QueryRowContext(ctx, accuracyQuery, userID).Scan(&accuracy)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to get recent accuracy: %w", err)
+	}
+
+	if accuracy.Valid {
+		result["recent_accuracy_percent"] = int(accuracy.Float64)
+	}
+
+	return result, nil
+}
+
+// GetBestPerformanceTime retrieves the time of day with best performance
+func (r *Repository) GetBestPerformanceTime(ctx context.Context, userID uint) (string, float64, error) {
+	query := `
+		SELECT hour_of_day, average_accuracy
+		FROM performance_patterns
+		WHERE user_id = ?
+		ORDER BY average_accuracy DESC
+		LIMIT 1
+	`
+
+	var hour int
 	var accuracy float64
-	if totalProblems.Valid && totalProblems.Int64 > 0 && correctAnswers.Valid {
-		accuracy = (float64(correctAnswers.Int64) / float64(totalProblems.Int64)) * 100.0
+
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&hour, &accuracy)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", 0, nil
+		}
+		return "", 0, fmt.Errorf("failed to get best performance time: %w", err)
 	}
 
-	// Insert or update
-	if count == 0 {
-		insertQuery := `
-			INSERT INTO math_user_stats (
-				user_id, total_problems, correct_answers, accuracy,
-				average_time_per_problem, best_score, total_time_spent,
-				sessions_completed, last_updated
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`
-
-		_, err := r.db.ExecContext(
-			ctx,
-			insertQuery,
-			userID,
-			totalProblems.Int64,
-			correctAnswers.Int64,
-			accuracy,
-			avgTimePerProblem.Float64,
-			bestScore.Float64,
-			int(totalTimeSpent.Float64),
-			totalSessions,
-			time.Now(),
-		)
-		if err != nil {
-			return fmt.Errorf("failed to insert user stats: %w", err)
-		}
-	} else {
-		updateQuery := `
-			UPDATE math_user_stats
-			SET total_problems = ?,
-				correct_answers = ?,
-				accuracy = ?,
-				average_time_per_problem = ?,
-				best_score = ?,
-				total_time_spent = ?,
-				sessions_completed = ?,
-				last_updated = ?
-			WHERE user_id = ?
-		`
-
-		_, err := r.db.ExecContext(
-			ctx,
-			updateQuery,
-			totalProblems.Int64,
-			correctAnswers.Int64,
-			accuracy,
-			avgTimePerProblem.Float64,
-			bestScore.Float64,
-			int(totalTimeSpent.Float64),
-			totalSessions,
-			time.Now(),
-			userID,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to update user stats: %w", err)
-		}
-	}
-
-	return nil
+	timeOfDay := GetTimeOfDayFromHour(hour)
+	return timeOfDay, accuracy, nil
 }

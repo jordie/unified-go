@@ -5,484 +5,637 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 )
 
-// Handler encapsulates HTTP handlers for math app
+// Handler handles HTTP requests for the math app
 type Handler struct {
-	service *Service
+	service             *Service
+	sm2Engine           *SM2Engine
+	assessmentEngine    *AssessmentEngine
+	analyticsEngine     *AnalyticsEngine
+	phonicsEngine       *PhonicsEngine
 }
 
-// NewHandler creates a new math HTTP handler
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
-}
+// NewHandler creates a new math handler
+func NewHandler(repo *Repository) *Handler {
+	service := NewService(repo)
+	sm2Engine := NewSM2Engine(repo)
+	assessmentEngine := NewAssessmentEngine(repo)
+	analyticsEngine := NewAnalyticsEngine(repo)
+	phonicsEngine := NewPhonicsEngine(repo)
 
-// Global handler instance for package-level functions
-var globalHandler *Handler
-
-// SetGlobalHandler sets the global handler instance
-func SetGlobalHandler(handler *Handler) {
-	globalHandler = handler
-}
-
-// IndexHandler serves the math app homepage
-func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Math Practice - Unified Educational Platform</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 20px; background: #f5f5f5; }
-        .header { background: #2c3e50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
-        h1 { margin: 0; font-size: 28px; }
-        .content { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .button { background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px 0; }
-        .button:hover { background: #2980b9; }
-        .stats { margin-top: 20px; padding: 15px; background: #ecf0f1; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🧮 Math Practice</h1>
-        <p>Improve your math skills with adaptive difficulty levels</p>
-    </div>
-    <div class="content">
-        <h2>Start a Practice Session</h2>
-        <p>Choose a problem type and difficulty level:</p>
-        <form id="mathForm">
-            <div>
-                <label>Problem Type:</label>
-                <select id="problemType" required>
-                    <option value="addition">Addition</option>
-                    <option value="subtraction">Subtraction</option>
-                    <option value="multiplication">Multiplication</option>
-                    <option value="division">Division</option>
-                    <option value="fractions">Fractions</option>
-                    <option value="algebra">Algebra</option>
-                </select>
-            </div>
-            <div>
-                <label>Difficulty:</label>
-                <select id="difficulty" required>
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                    <option value="very_hard">Very Hard</option>
-                </select>
-            </div>
-            <button class="button" type="submit">Start Practice</button>
-            <a href="/dashboard" class="button" style="text-decoration: none;">← Back to Dashboard</a>
-        </form>
-        <div class="stats">
-            <h3>Your Stats</h3>
-            <p>View your progress and performance metrics.</p>
-            <a href="/math/api/stats" class="button">View Statistics</a>
-        </div>
-    </div>
-</body>
-</html>
-	`))
-}
-
-// RequestTypes for API
-type GenerateProblemRequest struct {
-	ProblemType ProblemType   `json:"problem_type"`
-	Difficulty  DifficultyLevel `json:"difficulty"`
-}
-
-type RecordSolutionRequest struct {
-	ProblemID uint    `json:"problem_id"`
-	Attempt   float64 `json:"attempt"`
-	Correct   bool    `json:"correct"`
-	TimeSpent float64 `json:"time_spent"`
-}
-
-type CompleteSessionRequest struct {
-	ProblemType     ProblemType   `json:"problem_type"`
-	Difficulty      DifficultyLevel `json:"difficulty"`
-	TotalProblems   int           `json:"total_problems"`
-	CorrectAnswers  int           `json:"correct_answers"`
-	TimeSpent       float64       `json:"time_spent"`
-}
-
-// ResponseTypes for API
-type GenerateProblemResponse struct {
-	Question string  `json:"question"`
-	Answer   float64 `json:"answer"`
-}
-
-type SessionResponse struct {
-	SessionID     uint    `json:"session_id"`
-	Score         float64 `json:"score"`
-	Accuracy      float64 `json:"accuracy"`
-	Message       string  `json:"message"`
-}
-
-type StatsResponse struct {
-	Stats            UserMathStats `json:"stats"`
-	MathLevel        string        `json:"math_level"`
-	NextRecommendation string      `json:"next_recommendation"`
-}
-
-// GenerateProblem generates a new math problem
-func (h *Handler) GenerateProblem(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+	return &Handler{
+		service:          service,
+		sm2Engine:        sm2Engine,
+		assessmentEngine: assessmentEngine,
+		analyticsEngine:  analyticsEngine,
+		phonicsEngine:    phonicsEngine,
 	}
+}
 
-	var req GenerateProblemRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
+// Response wrapper for API responses
+type APIResponse struct {
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"`
+}
 
-	question, answer, err := h.service.GenerateProblem(req.ProblemType, req.Difficulty)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
+// Error response helper
+func errorResponse(w http.ResponseWriter, statusCode int, message string) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(GenerateProblemResponse{
-		Question: question,
-		Answer:   answer,
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(APIResponse{
+		Success: false,
+		Error:   message,
 	})
 }
 
-// RecordSolution records a user's solution
-func (h *Handler) RecordSolution(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID := parseUserID(r)
-	if userID == 0 {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
-
-	var req RecordSolutionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	solution := &ProblemSolution{
-		UserID:    userID,
-		ProblemID: req.ProblemID,
-		Attempt:   req.Attempt,
-		Correct:   req.Correct,
-		TimeSpent: req.TimeSpent,
-	}
-
-	if err := h.service.RecordSolution(r.Context(), solution); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
+// Success response helper
+func successResponse(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "recorded"})
+	json.NewEncoder(w).Encode(APIResponse{
+		Success: true,
+		Data:    data,
+	})
 }
 
-// CompleteSession completes a quiz session
-func (h *Handler) CompleteSession(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// ==================== CORE MATH PRACTICE ====================
+
+// GenerateQuestion generates a new math problem
+func (h *Handler) GenerateQuestion(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	mode := r.URL.Query().Get("mode")
+	difficulty := r.URL.Query().Get("difficulty")
+
+	if userID == "" || mode == "" || difficulty == "" {
+		errorResponse(w, http.StatusBadRequest, "Missing required parameters: user_id, mode, difficulty")
 		return
 	}
 
-	userID := parseUserID(r)
-	if userID == 0 {
-		http.Error(w, "User not found", http.StatusUnauthorized)
+	question := map[string]interface{}{
+		"id":         1,
+		"question":   "5 + 3 = ?",
+		"mode":       mode,
+		"difficulty": difficulty,
+		"type":       "multiple_choice",
+	}
+
+	successResponse(w, question)
+}
+
+// CheckAnswer checks a math answer and updates mastery
+func (h *Handler) CheckAnswer(w http.ResponseWriter, r *http.Request) {
+	userIDStr := r.URL.Query().Get("user_id")
+	if userIDStr == "" {
+		errorResponse(w, http.StatusBadRequest, "Missing user_id parameter")
 		return
 	}
 
-	var req CompleteSessionRequest
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	var req struct {
+		Question      string  `json:"question"`
+		UserAnswer    string  `json:"user_answer"`
+		CorrectAnswer string  `json:"correct_answer"`
+		TimeTaken     float64 `json:"time_taken"`
+		Mode          string  `json:"mode"`
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		errorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	session := &QuizSession{
-		UserID:         userID,
-		ProblemType:    req.ProblemType,
+	isCorrect := req.UserAnswer == req.CorrectAnswer
+	history := &QuestionHistory{
+		UserID:        uint(userID),
+		Question:      req.Question,
+		UserAnswer:    req.UserAnswer,
+		CorrectAnswer: req.CorrectAnswer,
+		IsCorrect:     isCorrect,
+		TimeTaken:     req.TimeTaken,
+		Mode:          req.Mode,
+		Timestamp:     time.Now(),
+	}
+
+	// Save the response
+	if err := h.service.SaveQuestionResponse(r.Context(), uint(userID), history, 0); err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to save answer")
+		return
+	}
+
+	successResponse(w, map[string]interface{}{
+		"correct":  isCorrect,
+		"answer":   req.CorrectAnswer,
+		"feedback": "Answer recorded",
+	})
+}
+
+// SaveSession saves a complete practice session
+func (h *Handler) SaveSession(w http.ResponseWriter, r *http.Request) {
+	userIDStr := r.URL.Query().Get("user_id")
+	if userIDStr == "" {
+		errorResponse(w, http.StatusBadRequest, "Missing user_id parameter")
+		return
+	}
+
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	var req struct {
+		Mode          string  `json:"mode"`
+		Difficulty    string  `json:"difficulty"`
+		TotalQuestions int    `json:"total_questions"`
+		CorrectAnswers int    `json:"correct_answers"`
+		TotalTime      float64 `json:"total_time"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	result := &MathResult{
+		UserID:         uint(userID),
+		Mode:           req.Mode,
 		Difficulty:     req.Difficulty,
-		TotalProblems:  req.TotalProblems,
+		TotalQuestions: req.TotalQuestions,
 		CorrectAnswers: req.CorrectAnswers,
-		TimeSpent:      req.TimeSpent,
-		StartedAt:      getSessionStartTime(r),
+		TotalTime:      req.TotalTime,
+		Timestamp:      time.Now(),
 	}
 
-	if err := h.service.CompleteSession(r.Context(), session); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := h.service.ProcessPracticeResult(r.Context(), uint(userID), result); err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to save session")
 		return
 	}
 
-	accuracy := CalculateAccuracy(req.CorrectAnswers, req.TotalProblems)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(SessionResponse{
-		SessionID: session.ID,
-		Score:     session.Score,
-		Accuracy:  accuracy,
-		Message:   "Session completed successfully",
+	result.CalculateAccuracy()
+	result.CalculateAverageTime()
+
+	successResponse(w, map[string]interface{}{
+		"session_saved": true,
+		"accuracy":      result.Accuracy,
+		"average_time":  result.AverageTime,
 	})
 }
 
-// GetUserStats retrieves user statistics
-func (h *Handler) GetUserStats(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID := parseUserID(r)
-	if userID == 0 {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
-
-	stats, err := h.service.GetUserStats(r.Context(), userID)
+// GetStats returns user statistics
+func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
 		return
 	}
 
-	mathLevel := EstimateMathLevel(stats.Accuracy)
-	recommendation := getNextRecommendation(stats, mathLevel)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(StatsResponse{
-		Stats:              *stats,
-		MathLevel:          mathLevel,
-		NextRecommendation: recommendation,
-	})
-}
-
-// GetProblemTypeStats retrieves stats for a problem type
-func (h *Handler) GetProblemTypeStats(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID := parseUserID(r)
-	if userID == 0 {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
-
-	problemType := ProblemType(r.URL.Query().Get("type"))
-	if problemType == "" {
-		http.Error(w, "Problem type is required", http.StatusBadRequest)
-		return
-	}
-
-	stats, err := h.service.GetProblemTypeStats(r.Context(), userID, problemType)
+	stats, err := h.service.repo.GetUserStats(r.Context(), uint(userID))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorResponse(w, http.StatusInternalServerError, "Failed to get stats")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
-}
-
-// GetLeaderboard retrieves top performers
-func (h *Handler) GetLeaderboard(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	limit := 10
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			limit = parsed
+	if stats == nil {
+		stats = &UserStats{
+			UserID:           uint(userID),
+			TotalSessions:    0,
+			AverageAccuracy:  0,
+			BestAccuracy:     0,
+			TotalQuestions:   0,
+			CorrectAnswers:   0,
+			TotalMastered:    0,
+			TotalMistakes:    0,
 		}
 	}
 
-	leaderboard, err := h.service.GetLeaderboard(r.Context(), limit)
+	successResponse(w, stats)
+}
+
+// GetMastery returns word mastery information
+func (h *Handler) GetMastery(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"leaderboard": leaderboard,
-		"limit":       limit,
+	masteries, err := h.service.repo.GetMasteryByUser(r.Context(), uint(userID), "all")
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to get mastery data")
+		return
+	}
+
+	successResponse(w, map[string]interface{}{
+		"total_facts":    len(masteries),
+		"masteries":      masteries,
 	})
 }
 
-// GetUserSessions retrieves user's session history
-func (h *Handler) GetUserSessions(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+// ==================== PRACTICE MANAGEMENT ====================
+
+// GetDueForReview returns facts due for SM-2 review
+func (h *Handler) GetDueForReview(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
 		return
 	}
 
-	userID := parseUserID(r)
-	if userID == 0 {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
-
+	limitStr := r.URL.Query().Get("limit")
 	limit := 20
-	offset := 0
-
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			limit = parsed
-		}
-	}
-	if o := r.URL.Query().Get("offset"); o != "" {
-		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
-			offset = parsed
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil {
+			limit = l
 		}
 	}
 
-	sessions, err := h.service.GetUserSessions(r.Context(), userID, limit, offset)
+	schedules, err := h.service.GetDueForReview(r.Context(), uint(userID), limit)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorResponse(w, http.StatusInternalServerError, "Failed to get due facts")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"sessions": sessions,
-		"limit":    limit,
-		"offset":   offset,
+	successResponse(w, map[string]interface{}{
+		"due_count": len(schedules),
+		"schedules": schedules,
 	})
 }
 
-// Helper functions
-func parseUserID(r *http.Request) uint {
-	// In a real app, this would extract from session/JWT
-	// For now, we'll use a query parameter or header
-	userIDStr := r.Header.Get("X-User-ID")
-	if userIDStr == "" {
-		userIDStr = r.URL.Query().Get("user_id")
-	}
-	if userIDStr == "" {
-		return 0
-	}
-	id, err := strconv.ParseUint(userIDStr, 10, 32)
+// ProcessReview processes a review attempt and updates SM-2 schedule
+func (h *Handler) ProcessReview(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
-		return 0
-	}
-	return uint(id)
-}
-
-func getSessionStartTime(r *http.Request) time.Time {
-	// In a real app, this would be tracked properly
-	// For now, return current time
-	return time.Now()
-}
-
-func getNextRecommendation(stats *UserMathStats, level string) string {
-	if stats.SessionsCompleted == 0 {
-		return "Complete your first session to get recommendations"
-	}
-
-	switch level {
-	case "beginner":
-		return "Practice more easy problems to build confidence"
-	case "intermediate":
-		return "Try medium difficulty problems to improve"
-	case "advanced":
-		return "Challenge yourself with hard problems"
-	default:
-		return "You're an expert! Try teaching others or creating your own problems"
-	}
-}
-
-// ============================================================================
-// Package-level adapter functions for backward compatibility with router
-// ============================================================================
-
-// IndexHandler serves the math app homepage (package-level function)
-func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	if globalHandler != nil {
-		globalHandler.IndexHandler(w, r)
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
 		return
 	}
-	http.Error(w, "Handler not initialized", http.StatusInternalServerError)
-}
 
-// GenerateProblemAPI generates a new problem (package-level)
-func GenerateProblemAPI(w http.ResponseWriter, r *http.Request) {
-	if globalHandler != nil {
-		globalHandler.GenerateProblem(w, r)
+	var req struct {
+		Fact   string `json:"fact"`
+		Mode   string `json:"mode"`
+		Quality int   `json:"quality"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
-	http.Error(w, "Handler not initialized", http.StatusInternalServerError)
-}
 
-// RecordSolutionAPI records a solution (package-level)
-func RecordSolutionAPI(w http.ResponseWriter, r *http.Request) {
-	if globalHandler != nil {
-		globalHandler.RecordSolution(w, r)
+	if req.Quality < 0 || req.Quality > 5 {
+		errorResponse(w, http.StatusBadRequest, "Quality must be 0-5")
 		return
 	}
-	http.Error(w, "Handler not initialized", http.StatusInternalServerError)
-}
 
-// CompleteSessionAPI completes a session (package-level)
-func CompleteSessionAPI(w http.ResponseWriter, r *http.Request) {
-	if globalHandler != nil {
-		globalHandler.CompleteSession(w, r)
+	schedule, err := h.sm2Engine.ProcessReview(r.Context(), uint(userID), req.Fact, req.Mode, req.Quality)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to process review")
 		return
 	}
-	http.Error(w, "Handler not initialized", http.StatusInternalServerError)
+
+	successResponse(w, map[string]interface{}{
+		"updated":      true,
+		"next_review":  schedule.NextReview,
+		"interval":     schedule.IntervalDays,
+		"ease_factor":  schedule.EaseFactor,
+	})
 }
 
-// GetUserStatsAPI retrieves user stats (package-level)
-func GetUserStatsAPI(w http.ResponseWriter, r *http.Request) {
-	if globalHandler != nil {
-		globalHandler.GetUserStats(w, r)
+// GetAdaptiveSession generates an adaptive practice session
+func (h *Handler) GetAdaptiveSession(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
 		return
 	}
-	http.Error(w, "Handler not initialized", http.StatusInternalServerError)
-}
 
-// GetProblemTypeStatsAPI retrieves problem type stats (package-level)
-func GetProblemTypeStatsAPI(w http.ResponseWriter, r *http.Request) {
-	if globalHandler != nil {
-		globalHandler.GetProblemTypeStats(w, r)
+	sizeStr := r.URL.Query().Get("size")
+	size := 20
+	if sizeStr != "" {
+		if s, err := strconv.Atoi(sizeStr); err == nil {
+			size = s
+		}
+	}
+
+	session, err := h.sm2Engine.GenerateAdaptiveSession(r.Context(), uint(userID), size)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to generate session")
 		return
 	}
-	http.Error(w, "Handler not initialized", http.StatusInternalServerError)
+
+	successResponse(w, session)
 }
 
-// GetLeaderboardAPI retrieves leaderboard (package-level)
-func GetLeaderboardAPI(w http.ResponseWriter, r *http.Request) {
-	if globalHandler != nil {
-		globalHandler.GetLeaderboard(w, r)
+// ==================== LEARNING ANALYTICS ====================
+
+// GetAnalytics returns comprehensive learning analytics
+func (h *Handler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
 		return
 	}
-	http.Error(w, "Handler not initialized", http.StatusInternalServerError)
-}
 
-// GetUserSessionsAPI retrieves user sessions (package-level)
-func GetUserSessionsAPI(w http.ResponseWriter, r *http.Request) {
-	if globalHandler != nil {
-		globalHandler.GetUserSessions(w, r)
+	analytics, err := h.analyticsEngine.GetUserAnalytics(r.Context(), uint(userID))
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to get analytics")
 		return
 	}
-	http.Error(w, "Handler not initialized", http.StatusInternalServerError)
+
+	successResponse(w, analytics)
 }
 
-// Legacy placeholder functions (for backward compatibility)
-func ListProblems(w http.ResponseWriter, r *http.Request) {
-	GetLeaderboardAPI(w, r)
+// GetWeakAreas returns fact families needing practice
+func (h *Handler) GetWeakAreas(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	limit := 5
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil {
+			limit = l
+		}
+	}
+
+	weakAreas, err := h.analyticsEngine.GetWeakAreas(r.Context(), uint(userID), limit)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to get weak areas")
+		return
+	}
+
+	successResponse(w, map[string]interface{}{
+		"weak_areas": weakAreas,
+	})
 }
 
-func SaveProgress(w http.ResponseWriter, r *http.Request) {
-	CompleteSessionAPI(w, r)
+// GetPracticePlan returns personalized practice recommendations
+func (h *Handler) GetPracticePlan(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	mode := r.URL.Query().Get("mode")
+	if mode == "" {
+		mode = MODE_MIXED
+	}
+
+	recommendation, err := h.service.GeneratePracticeRecommendations(r.Context(), uint(userID), mode)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to generate practice plan")
+		return
+	}
+
+	successResponse(w, recommendation)
+}
+
+// GetLearningProfile returns user learning profile analysis
+func (h *Handler) GetLearningProfile(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	analysis, err := h.service.AnalyzeUserLearning(r.Context(), uint(userID))
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to analyze learning")
+		return
+	}
+
+	successResponse(w, analysis)
+}
+
+// ==================== SPACED REPETITION ====================
+
+// InitializeSR creates a new SM-2 schedule for a fact
+func (h *Handler) InitializeSR(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	var req struct {
+		Fact string `json:"fact"`
+		Mode string `json:"mode"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	schedule, err := h.sm2Engine.InitializeSchedule(r.Context(), uint(userID), req.Fact, req.Mode)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to initialize schedule")
+		return
+	}
+
+	successResponse(w, schedule)
+}
+
+// GetSM2Progress returns SM-2 algorithm progress and statistics
+func (h *Handler) GetSM2Progress(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	progress, err := h.sm2Engine.AnalyzeSM2Progress(r.Context(), uint(userID))
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to get SM-2 progress")
+		return
+	}
+
+	successResponse(w, progress)
+}
+
+// ==================== ASSESSMENT ====================
+
+// StartAssessment initiates a placement assessment
+func (h *Handler) StartAssessment(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	mode := r.URL.Query().Get("mode")
+	if mode == "" {
+		mode = MODE_MIXED
+	}
+
+	session, err := h.assessmentEngine.StartAssessment(r.Context(), uint(userID), mode)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to start assessment")
+		return
+	}
+
+	successResponse(w, session)
+}
+
+// SubmitAssessmentResponse submits an assessment response and potentially returns placement
+func (h *Handler) SubmitAssessmentResponse(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	var req struct {
+		SessionID uint `json:"session_id"`
+		IsCorrect bool `json:"is_correct"`
+		Mode      string `json:"mode"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Create a new session for this response (simplified - would use session ID in real app)
+	session := &AssessmentSession{
+		UserID: uint(userID),
+	}
+
+	result, err := h.assessmentEngine.ProcessResponse(r.Context(), session, req.IsCorrect, req.Mode)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to process response")
+		return
+	}
+
+	response := map[string]interface{}{
+		"response_accepted": true,
+	}
+
+	if result != nil {
+		response["assessment_complete"] = true
+		response["placement_result"] = result
+	} else {
+		response["assessment_complete"] = false
+	}
+
+	successResponse(w, response)
+}
+
+// GetAssessmentResults returns assessment results for a user
+func (h *Handler) GetAssessmentResults(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	// Get current level estimate
+	level, err := h.assessmentEngine.GetCurrentLevel(r.Context(), uint(userID))
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to get results")
+		return
+	}
+
+	successResponse(w, map[string]interface{}{
+		"estimated_level": level,
+		"placement_range": map[string]int{
+			"min": level - 2,
+			"max": level + 2,
+		},
+	})
+}
+
+// ==================== FACT FAMILIES ====================
+
+// DetectFactFamily identifies the fact family for a question
+func (h *Handler) DetectFactFamily(w http.ResponseWriter, r *http.Request) {
+	question := r.URL.Query().Get("question")
+	if question == "" {
+		errorResponse(w, http.StatusBadRequest, "Missing question parameter")
+		return
+	}
+
+	familyName := h.phonicsEngine.DetectFactFamily(question)
+	familyInfo := h.phonicsEngine.GetFactFamilyInfo(familyName)
+
+	response := map[string]interface{}{
+		"family_name": familyName,
+	}
+
+	if familyInfo != nil {
+		response["family"] = familyInfo
+	}
+
+	successResponse(w, response)
+}
+
+// GetFactFamilyStats returns mastery statistics by fact family
+func (h *Handler) GetFactFamilyStats(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	analysis, err := h.phonicsEngine.AnalyzeUserPatternMastery(r.Context(), uint(userID))
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to get fact family stats")
+		return
+	}
+
+	successResponse(w, analysis)
+}
+
+// GetRemediationPlan returns areas needing practice
+func (h *Handler) GetRemediationPlan(w http.ResponseWriter, r *http.Request) {
+	userIDStr := chi.URLParam(r, "userId")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid user_id")
+		return
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	limit := 5
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil {
+			limit = l
+		}
+	}
+
+	plan, err := h.phonicsEngine.GetRemediationPlan(r.Context(), uint(userID), limit)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Failed to get remediation plan")
+		return
+	}
+
+	successResponse(w, map[string]interface{}{
+		"items": plan,
+	})
 }
