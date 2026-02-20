@@ -394,3 +394,128 @@ func BenchmarkMetricsCalculation(b *testing.B) {
 		_ = CalculateAccuracy(500, 5)
 	}
 }
+
+// Racing Integration Tests
+
+func TestRaceModelValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		race      Race
+		expectErr bool
+	}{
+		{
+			name: "valid_race",
+			race: Race{
+				UserID:    1,
+				Mode:      "standard",
+				Placement: 1,
+				WPM:       45.5,
+				Accuracy:  95.0,
+				RaceTime:  120.0,
+				XPEarned:  85,
+			},
+			expectErr: false,
+		},
+		{
+			name: "invalid_placement",
+			race: Race{
+				UserID:    1,
+				Mode:      "standard",
+				Placement: 5,
+				WPM:       45.5,
+				Accuracy:  95.0,
+				RaceTime:  120.0,
+				XPEarned:  85,
+			},
+			expectErr: true,
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.race.Validate()
+			if (err != nil) != tt.expectErr {
+				t.Errorf("expected error: %v, got: %v", tt.expectErr, err)
+			}
+		})
+	}
+}
+
+func TestXPCalculation(t *testing.T) {
+	ti := setupIntegration(t)
+	
+	tests := []struct {
+		name      string
+		wpm       float64
+		accuracy  float64
+		placement int
+		minXP     int
+	}{
+		{
+			name:      "first_place_high_wpm",
+			wpm:       100.0,
+			accuracy:  95.0,
+			placement: 1,
+			minXP:     100,
+		},
+		{
+			name:      "second_place",
+			wpm:       60.0,
+			accuracy:  90.0,
+			placement: 2,
+			minXP:     50,
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			xp := ti.service.CalculateRaceXP(tt.wpm, tt.accuracy, tt.placement)
+			if xp < tt.minXP {
+				t.Errorf("expected XP at least %d, got %d", tt.minXP, xp)
+			}
+		})
+	}
+}
+
+func TestAIOpponentGeneration(t *testing.T) {
+	ti := setupIntegration(t)
+	
+	opponent := ti.service.GenerateAIOpponent("medium")
+	
+	if opponent.Name == "" {
+		t.Error("AI opponent should have a name")
+	}
+	if opponent.Car == "" {
+		t.Error("AI opponent should have a car")
+	}
+	if opponent.WPM < 0 {
+		t.Error("WPM should not be negative")
+	}
+}
+
+func TestGetTextSample(t *testing.T) {
+	ti := setupIntegration(t)
+	
+	text := ti.service.GetSelectedText("common_words")
+	if text == "" {
+		t.Error("text sample should not be empty")
+	}
+}
+
+func BenchmarkCalculateRaceXP(b *testing.B) {
+	ti := setupBenchmark(b)
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ti.service.CalculateRaceXP(75.0, 92.0, 1)
+	}
+}
+
+func BenchmarkGenerateAIOpponent(b *testing.B) {
+	ti := setupBenchmark(b)
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ti.service.GenerateAIOpponent("medium")
+	}
+}
