@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Race</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .race-arena {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .race-track {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .racer {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #667eea;
+        }
+        
+        .racer.ai {
+            border-color: #ff6b6b;
+        }
+        
+        .racer-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .racer-car {
+            font-size: 3em;
+        }
+        
+        .racer-details h3 {
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+        
+        .racer-stats {
+            font-size: 0.9em;
+            color: #555;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: width 0.3s ease;
+        }
+        
+        .racer.ai .progress-fill {
+            background: linear-gradient(90deg, #ff6b6b 0%, #ff8787 100%);
+        }
+        
+        .speed-display {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+        }
+        
+        .racer.ai .speed-display {
+            color: #ff6b6b;
+        }
+        
+        .text-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+            min-height: 100px;
+        }
+        
+        .text-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .text-content .completed {
+            background: #c3e88d;
+            color: #333;
+        }
+        
+        .text-content .current {
+            background: #fff9c4;
+            color: #333;
+            border-bottom: 3px solid #fbc02d;
+        }
+        
+        .text-content .error {
+            background: #ffcdd2;
+            color: #c62828;
+            text-decoration: underline wavy #c62828;
+        }
+        
+        .input-area {
+            margin-bottom: 20px;
+        }
+        
+        #raceInput {
+            width: 100%;
+            padding: 15px;
+            font-size: 1em;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            resize: none;
+            min-height: 60px;
+            focus-visible: outline: 2px solid #764ba2;
+        }
+        
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .results-panel {
+            display: none;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .results-panel.show {
+            display: block;
+        }
+        
+        .results-title {
+            font-size: 2em;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .result-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .result-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .result-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .placement-badge {
+            font-size: 3em;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .race-track {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-row, .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏁 Typing Race</h1>
+            <p>Race against AI to improve your typing speed</p>
+        </div>
+        
+        <div class="race-arena">
+            <!-- Race Track -->
+            <div class="race-track">
+                <!-- Player -->
+                <div class="racer">
+                    <div class="racer-info">
+                        <div class="racer-car" id="playerCar">🚗</div>
+                        <div class="racer-details">
+                            <h3 id="playerName">You</h3>
+                            <div class="racer-stats">
+                                <span id="playerWPM">0</span> WPM | 
+                                <span id="playerAccuracy">0</span>%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="playerProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="speed-display" id="playerSpeed">0 WPM</div>
+                </div>
+                
+                <!-- AI Opponent -->
+                <div class="racer ai">
+                    <div class="racer-info">
+                        <div class="racer-car" id="aiCar">🏎️</div>
+                        <div class="racer-details">
+                            <h3 id="aiName">Speed Racer</h3>
+                            <div class="racer-stats">
+                                <span id="aiWPM">45</span> WPM | 
+                                <span id="aiAccuracy">92</span>%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="aiProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="speed-display" id="aiSpeed">45 WPM</div>
+                </div>
+            </div>
+            
+            <!-- Text to Type -->
+            <div class="text-container">
+                <div class="text-content" id="textContent">
+                    Loading race content...
+                </div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="input-area">
+                <textarea id="raceInput" placeholder="Start typing when you're ready..."></textarea>
+            </div>
+            
+            <!-- Real-time Stats -->
+            <div class="stats-row">
+                <div class="stat-box">
+                    <div class="stat-label">WPM</div>
+                    <div class="stat-value" id="currentWPM">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Accuracy</div>
+                    <div class="stat-value" id="currentAccuracy">100%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Errors</div>
+                    <div class="stat-value" id="currentErrors">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Time</div>
+                    <div class="stat-value" id="currentTime">0s</div>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="button-group">
+                <button class="btn-primary" id="startBtn" onclick="startRace()">Start Race</button>
+                <button class="btn-primary" id="finishBtn" onclick="finishRace()" style="display: none;">Finish Race</button>
+                <button class="btn-secondary" onclick="window.history.back()">Back</button>
+            </div>
+            
+            <!-- Results Panel -->
+            <div class="results-panel" id="resultsPanel">
+                <div class="results-title" id="resultTitle">You Placed 1st! 🥇</div>
+                <div class="placement-badge" id="placementEmoji">🥇</div>
+                <div class="results-grid">
+                    <div class="result-item">
+                        <div class="result-label">Final WPM</div>
+                        <div class="result-value" id="finalWPM">0</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Accuracy</div>
+                        <div class="result-value" id="finalAccuracy">0%</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">XP Earned</div>
+                        <div class="result-value" id="xpEarned">0</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Race Time</div>
+                        <div class="result-value" id="raceTime">0s</div>
+                    </div>
+                </div>
+                <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn-primary" onclick="location.reload()">Race Again</button>
+                    <button class="btn-secondary" onclick="window.history.back()">Back to Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let raceStarted = false;
+        let raceFinished = false;
+        let startTime = null;
+        let textContent = "the quick brown fox jumps over the lazy dog";
+        
+        function startRace() {
+            raceStarted = true;
+            raceFinished = false;
+            startTime = Date.now();
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('finishBtn').style.display = 'inline-block';
+            document.getElementById('raceInput').focus();
+            document.getElementById('raceInput').value = '';
+            updateProgress();
+        }
+        
+        function finishRace() {
+            raceFinished = true;
+            const input = document.getElementById('raceInput').value;
+            const elapsed = (Date.now() - startTime) / 1000;
+            const wpm = calculateWPM(input.length, elapsed);
+            const accuracy = calculateAccuracy(textContent, input);
+            
+            showResults(wpm, accuracy, elapsed);
+        }
+        
+        function calculateWPM(charCount, seconds) {
+            const minutes = seconds / 60;
+            const words = charCount / 5;
+            return Math.round((words / minutes) * 10) / 10;
+        }
+        
+        function calculateAccuracy(original, typed) {
+            let correct = 0;
+            for (let i = 0; i < Math.min(original.length, typed.length); i++) {
+                if (original[i] === typed[i]) correct++;
+            }
+            return Math.round((correct / original.length) * 1000) / 10;
+        }
+        
+        function updateProgress() {
+            if (!raceStarted || raceFinished) return;
+            
+            const input = document.getElementById('raceInput').value;
+            const progress = (input.length / textContent.length) * 100;
+            const elapsed = (Date.now() - startTime) / 1000;
+            const wpm = calculateWPM(input.length, elapsed);
+            const accuracy = calculateAccuracy(textContent, input);
+            
+            document.getElementById('playerProgress').style.width = progress + '%';
+            document.getElementById('currentWPM').textContent = Math.round(wpm);
+            document.getElementById('currentAccuracy').textContent = Math.round(accuracy) + '%';
+            document.getElementById('currentErrors').textContent = countErrors(textContent, input);
+            document.getElementById('currentTime').textContent = Math.round(elapsed) + 's';
+            document.getElementById('playerSpeed').textContent = Math.round(wpm) + ' WPM';
+            
+            updateTextHighlight(input);
+            requestAnimationFrame(updateProgress);
+        }
+        
+        function countErrors(original, typed) {
+            let errors = 0;
+            for (let i = 0; i < typed.length; i++) {
+                if (i >= original.length || original[i] !== typed[i]) errors++;
+            }
+            return errors;
+        }
+        
+        function updateTextHighlight(typed) {
+            let html = '';
+            for (let i = 0; i < textContent.length; i++) {
+                if (i < typed.length) {
+                    if (typed[i] === textContent[i]) {
+                        html += `<span class="completed">${textContent[i]}</span>`;
+                    } else {
+                        html += `<span class="error">${textContent[i]}</span>`;
+                    }
+                } else if (i === typed.length) {
+                    html += `<span class="current">${textContent[i]}</span>`;
+                } else {
+                    html += textContent[i];
+                }
+            }
+            document.getElementById('textContent').innerHTML = html;
+        }
+        
+        function showResults(wpm, accuracy, elapsed) {
+            const placement = wpm > 45 ? 1 : 2;
+            const xp = calculateXP(wpm, accuracy, placement);
+            const emojis = ['🥇', '🥈', '🥉', '4️⃣'];
+            
+            document.getElementById('resultTitle').textContent = `You Placed ${placement}${['st', 'nd', 'rd', 'th'][placement-1]}! ${emojis[placement-1]}`;
+            document.getElementById('placementEmoji').textContent = emojis[placement-1];
+            document.getElementById('finalWPM').textContent = Math.round(wpm);
+            document.getElementById('finalAccuracy').textContent = Math.round(accuracy) + '%';
+            document.getElementById('xpEarned').textContent = xp;
+            document.getElementById('raceTime').textContent = Math.round(elapsed) + 's';
+            document.getElementById('resultsPanel').classList.add('show');
+            document.getElementById('finishBtn').style.display = 'none';
+            document.getElementById('raceInput').disabled = true;
+        }
+        
+        function calculateXP(wpm, accuracy, placement) {
+            let base = 10;
+            let placementBonus = [50, 30, 15, 0][placement - 1];
+            let accuracyBonus = Math.round(accuracy / 4);
+            let speedBonus = wpm >= 40 ? Math.round((wpm - 40) / 3) : 0;
+            return base + placementBonus + accuracyBonus + speedBonus;
+        }
+        
+        // Initialize
+        document.getElementById('textContent').textContent = textContent;
+    </script>
+</body>
+</html>

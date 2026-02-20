@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fact Families Practice - Math</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .intro {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+
+        .intro h2 {
+            color: #1565c0;
+            margin-bottom: 15px;
+        }
+
+        .intro p {
+            color: #0d47a1;
+            line-height: 1.6;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .families-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .family-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .family-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .family-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .family-name {
+            font-size: 1.6em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .family-desc {
+            font-size: 0.95em;
+            opacity: 0.9;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .family-examples {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .family-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 15px;
+        }
+
+        .family-stat {
+            text-align: center;
+        }
+
+        .family-stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .btn {
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95em;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: #f0f0f0;
+            transform: scale(1.02);
+        }
+
+        .difficulty-indicator {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-bottom: 15px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .mastery-overview {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 40px;
+        }
+
+        .mastery-overview h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .mastery-bars {
+            display: grid;
+            gap: 15px;
+        }
+
+        .mastery-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .mastery-label {
+            flex: 0 0 150px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .mastery-bar-bg {
+            flex: 1;
+            height: 25px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .mastery-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .tips-section {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tips-section h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+        }
+
+        .tips-section ul {
+            list-style: none;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .tips-section li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .tips-section li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .back-button {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .back-button .btn {
+            padding: 12px 40px;
+            font-size: 1.05em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: auto;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .families-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mastery-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .mastery-label {
+                flex: 1 1 auto;
+            }
+
+            .mastery-bar-bg {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Fact Families Practice</h1>
+            <p>Master specific mathematical fact families</p>
+        </header>
+
+        <div class="content">
+            <div class="intro">
+                <h2>What are Fact Families?</h2>
+                <p>Fact families are groups of related math facts that share the same numbers. For example, the doubles family includes facts like 5+5, 6+6, 7+7 where you're adding a number to itself. Learning families helps you recognize patterns and build mathematical fluency more efficiently.</p>
+            </div>
+
+            <div class="section">
+                <h2>Filter by Category</h2>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterByCategory('all')">All Families</button>
+                    <button class="filter-btn" onclick="filterByCategory('addition')">➕ Addition</button>
+                    <button class="filter-btn" onclick="filterByCategory('subtraction')">➖ Subtraction</button>
+                    <button class="filter-btn" onclick="filterByCategory('multiplication')">✖️ Multiplication</button>
+                    <button class="filter-btn" onclick="filterByCategory('division')">➗ Division</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Mastery Overview</h2>
+                <div class="mastery-overview">
+                    <h3>Your Progress by Family</h3>
+                    <div class="mastery-bars">
+                        <div class="mastery-bar">
+                            <div class="mastery-label">Doubles</div>
+                            <div class="mastery-bar-bg">
+                                <div class="mastery-bar-fill" style="width: 95%">95%</div>
+                            </div>
+                        </div>
+                        <div class="mastery-bar">
+                            <div class="mastery-label">Make Ten</div>
+                            <div class="mastery-bar-bg">
+                                <div class="mastery-bar-fill" style="width: 88%">88%</div>
+                            </div>
+                        </div>
+                        <div class="mastery-bar">
+                            <div class="mastery-label">Plus Nine</div>
+                            <div class="mastery-bar-bg">
+                                <div class="mastery-bar-fill" style="width: 72%">72%</div>
+                            </div>
+                        </div>
+                        <div class="mastery-bar">
+                            <div class="mastery-label">Square Numbers</div>
+                            <div class="mastery-bar-bg">
+                                <div class="mastery-bar-fill" style="width: 81%">81%</div>
+                            </div>
+                        </div>
+                        <div class="mastery-bar">
+                            <div class="mastery-label">Division by 5</div>
+                            <div class="mastery-bar-bg">
+                                <div class="mastery-bar-fill" style="width: 65%">65%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Practice Families</h2>
+                <div class="families-grid">
+                    <div class="family-card">
+                        <div class="family-icon">➕</div>
+                        <div class="family-name">Doubles</div>
+                        <div class="difficulty-indicator">Level 2 - Easy</div>
+                        <div class="family-desc">Add a number to itself</div>
+                        <div class="family-examples">Examples: 5+5=10, 7+7=14, 9+9=18</div>
+                        <div class="family-stats">
+                            <div class="family-stat">
+                                <div>Your Mastery</div>
+                                <div class="family-stat-value">95%</div>
+                            </div>
+                            <div class="family-stat">
+                                <div>Practice Count</div>
+                                <div class="family-stat-value">42</div>
+                            </div>
+                        </div>
+                        <button class="btn" onclick="startPractice('doubles')">Practice</button>
+                    </div>
+
+                    <div class="family-card">
+                        <div class="family-icon">➕</div>
+                        <div class="family-name">Make Ten</div>
+                        <div class="difficulty-indicator">Level 3 - Easy</div>
+                        <div class="family-desc">Numbers that add to 10</div>
+                        <div class="family-examples">Examples: 3+7=10, 4+6=10, 2+8=10</div>
+                        <div class="family-stats">
+                            <div class="family-stat">
+                                <div>Your Mastery</div>
+                                <div class="family-stat-value">88%</div>
+                            </div>
+                            <div class="family-stat">
+                                <div>Practice Count</div>
+                                <div class="family-stat-value">35</div>
+                            </div>
+                        </div>
+                        <button class="btn" onclick="startPractice('make_ten')">Practice</button>
+                    </div>
+
+                    <div class="family-card">
+                        <div class="family-icon">➕</div>
+                        <div class="family-name">Plus Nine</div>
+                        <div class="difficulty-indicator">Level 4 - Medium</div>
+                        <div class="family-desc">Adding 9 using 10 minus 1</div>
+                        <div class="family-examples">Examples: 5+9=14, 8+9=17, 6+9=15</div>
+                        <div class="family-stats">
+                            <div class="family-stat">
+                                <div>Your Mastery</div>
+                                <div class="family-stat-value">72%</div>
+                            </div>
+                            <div class="family-stat">
+                                <div>Practice Count</div>
+                                <div class="family-stat-value">28</div>
+                            </div>
+                        </div>
+                        <button class="btn" onclick="startPractice('plus_nine')">Practice</button>
+                    </div>
+
+                    <div class="family-card">
+                        <div class="family-icon">✖️</div>
+                        <div class="family-name">Square Numbers</div>
+                        <div class="difficulty-indicator">Level 5 - Medium</div>
+                        <div class="family-desc">A number times itself</div>
+                        <div class="family-examples">Examples: 6×6=36, 7×7=49, 8×8=64</div>
+                        <div class="family-stats">
+                            <div class="family-stat">
+                                <div>Your Mastery</div>
+                                <div class="family-stat-value">81%</div>
+                            </div>
+                            <div class="family-stat">
+                                <div>Practice Count</div>
+                                <div class="family-stat-value">22</div>
+                            </div>
+                        </div>
+                        <button class="btn" onclick="startPractice('square_numbers')">Practice</button>
+                    </div>
+
+                    <div class="family-card">
+                        <div class="family-icon">➗</div>
+                        <div class="family-name">Division by 5</div>
+                        <div class="difficulty-indicator">Level 5 - Medium</div>
+                        <div class="family-desc">Dividing by 5 using skip counting</div>
+                        <div class="family-examples">Examples: 10÷5=2, 25÷5=5, 45÷5=9</div>
+                        <div class="family-stats">
+                            <div class="family-stat">
+                                <div>Your Mastery</div>
+                                <div class="family-stat-value">65%</div>
+                            </div>
+                            <div class="family-stat">
+                                <div>Practice Count</div>
+                                <div class="family-stat-value">18</div>
+                            </div>
+                        </div>
+                        <button class="btn" onclick="startPractice('divide_by_five')">Practice</button>
+                    </div>
+
+                    <div class="family-card">
+                        <div class="family-icon">✖️</div>
+                        <div class="family-name">Times Ten</div>
+                        <div class="difficulty-indicator">Level 2 - Easy</div>
+                        <div class="family-desc">Multiplying by 10 (add a zero)</div>
+                        <div class="family-examples">Examples: 3×10=30, 7×10=70, 12×10=120</div>
+                        <div class="family-stats">
+                            <div class="family-stat">
+                                <div>Your Mastery</div>
+                                <div class="family-stat-value">92%</div>
+                            </div>
+                            <div class="family-stat">
+                                <div>Practice Count</div>
+                                <div class="family-stat-value">31</div>
+                            </div>
+                        </div>
+                        <button class="btn" onclick="startPractice('ten_factor')">Practice</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tips-section">
+                <h3>💡 Fact Family Learning Tips</h3>
+                <ul>
+                    <li>Focus on one family at a time to avoid confusion</li>
+                    <li>Look for patterns within each family to aid memory</li>
+                    <li>Practice families you've mastered with spaced repetition</li>
+                    <li>Use real-world connections (doubles = two of something)</li>
+                    <li>Create flashcards for the most challenging families</li>
+                    <li>Mix family practice when you've mastered basics</li>
+                </ul>
+            </div>
+
+            <div class="back-button">
+                <button class="btn" onclick="window.location='/math'">← Back to Home</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startPractice(family) {
+            window.location = `/math/practice?family=${family}`;
+        }
+
+        function filterByCategory(category) {
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            // In real app, would filter cards by category
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+{{define "content"}}
+<div class="content">
+    <h1>📚 Reading Passages</h1>
+
+    <div style="margin-bottom: 2rem;">
+        <form method="GET" action="/passages" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; margin-bottom: 1.5rem;">
+            <div>
+                <label for="difficulty" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Reading Level:</label>
+                <select name="difficulty" id="difficulty" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">All Levels</option>
+                    <option value="beginner" {{if eq .Difficulty "beginner"}}selected{{end}}>Beginner</option>
+                    <option value="intermediate" {{if eq .Difficulty "intermediate"}}selected{{end}}>Intermediate</option>
+                    <option value="advanced" {{if eq .Difficulty "advanced"}}selected{{end}}>Advanced</option>
+                </select>
+            </div>
+            <div>
+                <label for="language" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Language:</label>
+                <select name="language" id="language" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="">All Languages</option>
+                    <option value="english" {{if eq .Language "english"}}selected{{end}}>English</option>
+                    <option value="spanish" {{if eq .Language "spanish"}}selected{{end}}>Spanish</option>
+                    <option value="french" {{if eq .Language "french"}}selected{{end}}>French</option>
+                    <option value="german" {{if eq .Language "german"}}selected{{end}}>German</option>
+                </select>
+            </div>
+            <div>
+                <label for="sort" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Sort By:</label>
+                <select name="sort" id="sort" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px;">
+                    <option value="title">Title (A-Z)</option>
+                    <option value="difficulty">Difficulty</option>
+                    <option value="length">Length</option>
+                    <option value="newest">Newest</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                <button type="submit" class="btn" style="flex: 1;">🔍 Filter</button>
+            </div>
+        </form>
+
+        <div style="display: flex; gap: 1rem; justify-content: space-between; align-items: center;">
+            <div>
+                {{if .TotalCount}}
+                    <p style="margin: 0; color: #666;"><strong>{{.TotalCount}}</strong> passage{{if ne .TotalCount 1}}s{{end}} available</p>
+                {{end}}
+            </div>
+            <button onclick="toggleViewMode()" class="btn btn-secondary" id="viewToggle">
+                📋 Switch to List View
+            </button>
+        </div>
+    </div>
+
+    {{if .Books}}
+        <!-- Grid View (Default) -->
+        <div id="gridView" class="grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+            {{range .Books}}
+                <div class="card" style="display: flex; flex-direction: column;">
+                    <div style="flex: 1;">
+                        <h3 style="color: #667eea; margin-bottom: 0.5rem;">{{.Title}}</h3>
+                        <p style="margin: 0.5rem 0; color: #666;">
+                            <strong>Author:</strong> {{.Author}}
+                        </p>
+                        <p style="margin: 0.5rem 0; color: #666;">
+                            <strong>Level:</strong> <span class="difficulty {{.ReadingLevel}}">{{.ReadingLevel}}</span>
+                        </p>
+                        <p style="margin: 0.5rem 0; color: #666;">
+                            <strong>Language:</strong> {{.Language}}
+                        </p>
+                        <p style="margin: 0.5rem 0; color: #666;">
+                            <strong>Length:</strong> {{.WordCount}} words
+                        </p>
+                        <div style="background: #f5f5f5; padding: 1rem; border-radius: 5px; margin: 1rem 0; line-height: 1.6; font-size: 0.95rem;">
+                            {{.Content | truncate 150}}
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <a href="/read/{{.ID}}" class="btn" style="display: block; text-align: center;">
+                            ▶️ Start Reading
+                        </a>
+                    </div>
+                </div>
+            {{end}}
+        </div>
+
+        <!-- List View (Hidden by default) -->
+        <div id="listView" style="display: none;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <th style="padding: 1rem; text-align: left;">Title</th>
+                        <th style="padding: 1rem; text-align: left;">Author</th>
+                        <th style="padding: 1rem; text-align: center;">Level</th>
+                        <th style="padding: 1rem; text-align: right;">Words</th>
+                        <th style="padding: 1rem; text-align: center;">Language</th>
+                        <th style="padding: 1rem; text-align: center;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $index, $book := .Books}}
+                        <tr style="border-bottom: 1px solid #eee; {{if eq (mod $index 2) 0}}background: #f9f9f9;{{end}}">
+                            <td style="padding: 1rem;">
+                                <strong>{{$book.Title}}</strong>
+                                <br><small style="color: #999;">{{$book.Content | truncate 80}}</small>
+                            </td>
+                            <td style="padding: 1rem;">{{$book.Author}}</td>
+                            <td style="padding: 1rem; text-align: center;">
+                                <span class="difficulty {{$book.ReadingLevel}}" style="display: inline-block;">{{$book.ReadingLevel}}</span>
+                            </td>
+                            <td style="padding: 1rem; text-align: right;">{{$book.WordCount}}</td>
+                            <td style="padding: 1rem; text-align: center;">{{$book.Language}}</td>
+                            <td style="padding: 1rem; text-align: center;">
+                                <a href="/read/{{$book.ID}}" class="btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Read</a>
+                            </td>
+                        </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination (if applicable) -->
+        {{if .HasMorePages}}
+            <div style="text-align: center; margin: 2rem 0;">
+                <button onclick="loadMore()" class="btn">Load More Passages</button>
+            </div>
+        {{end}}
+    {{else}}
+        <div class="alert alert-info">
+            <h2>No Passages Found</h2>
+            <p>Try adjusting your filters or <a href="/passages">view all passages</a> to get started!</p>
+            <p><a href="/" class="btn" style="display: inline-block; margin-top: 1rem;">Back to Home</a></p>
+        </div>
+    {{end}}
+</div>
+
+<script>
+    let currentView = 'grid';
+
+    function toggleViewMode() {
+        const gridView = document.getElementById('gridView');
+        const listView = document.getElementById('listView');
+        const toggle = document.getElementById('viewToggle');
+
+        if (currentView === 'grid') {
+            gridView.style.display = 'none';
+            listView.style.display = 'block';
+            toggle.textContent = '📊 Switch to Grid View';
+            currentView = 'list';
+            localStorage.setItem('passagesView', 'list');
+        } else {
+            gridView.style.display = 'grid';
+            listView.style.display = 'none';
+            toggle.textContent = '📋 Switch to List View';
+            currentView = 'grid';
+            localStorage.setItem('passagesView', 'grid');
+        }
+    }
+
+    function loadMore() {
+        // Implement pagination or infinite scroll
+        const sortParam = document.getElementById('sort')?.value || 'title';
+        const difficultyParam = document.getElementById('difficulty')?.value || '';
+        const languageParam = document.getElementById('language')?.value || '';
+
+        const params = new URLSearchParams({
+            sort: sortParam,
+            difficulty: difficultyParam,
+            language: languageParam,
+            page: 2
+        });
+
+        window.location.href = '/passages?' + params.toString();
+    }
+
+    // Restore user's view preference
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedView = localStorage.getItem('passagesView') || 'grid';
+        if (savedView === 'list') {
+            toggleViewMode();
+        }
+    });
+
+    // Helper function for template
+    function mod(n, m) {
+        return n % m;
+    }
+</script>
+{{end}}

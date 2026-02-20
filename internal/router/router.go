@@ -47,55 +47,13 @@ func Setup(cfg *config.Config, db *database.Pool) *chi.Mux {
 	fileServer := http.FileServer(http.Dir(cfg.StaticDir))
 	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
 
-	// API routes
-	r.Route("/api", func(r chi.Router) {
-		// Typing app routes
-		r.Route("/typing", func(r chi.Router) {
-			r.Get("/", typing.ListLessons)
-			r.Post("/progress", typing.SaveProgress)
-		})
+	// Mount educational app routers
+	r.Mount("/reading", reading.NewRouter(db.DB).Routes())
+	r.Mount("/piano", piano.NewRouter(db.DB).Routes())
+	r.Mount("/typing", typing.NewRouter(db.DB).Routes())
+	r.Mount("/math", math.NewRouter(db.DB).Routes())
 
-		// Math app routes
-		r.Route("/math", func(r chi.Router) {
-			r.Get("/", math.ListProblems)
-			r.Post("/progress", math.SaveProgress)
-		})
-
-		// Reading app routes
-		r.Route("/reading", func(r chi.Router) {
-			r.Get("/", reading.ListBooks)
-			r.Post("/progress", reading.SaveProgress)
-		})
-
-		// Piano app routes
-		r.Route("/piano", func(r chi.Router) {
-			r.Get("/", piano.ListSongs)
-			r.Post("/progress", piano.SaveProgress)
-		})
-
-		// Dashboard routes
-		r.Route("/dashboard", func(r chi.Router) {
-			r.Get("/stats", dashboard.GetStats)
-		})
-	})
-
-	// App-specific routes (with templates)
-	r.Route("/typing", func(r chi.Router) {
-		r.Get("/", typing.IndexHandler)
-	})
-
-	r.Route("/math", func(r chi.Router) {
-		r.Get("/", math.IndexHandler)
-	})
-
-	r.Route("/reading", func(r chi.Router) {
-		r.Get("/", reading.IndexHandler)
-	})
-
-	r.Route("/piano", func(r chi.Router) {
-		r.Get("/", piano.IndexHandler)
-	})
-
+	// Dashboard routes
 	r.Route("/dashboard", func(r chi.Router) {
 		r.Get("/", dashboard.IndexHandler)
 	})
@@ -107,6 +65,9 @@ func Setup(cfg *config.Config, db *database.Pool) *chi.Mux {
 
 	return r
 }
+
+// Note: App routers are now initialized directly in Setup() via NewRouter calls
+// Legacy initializeAppHandlers function removed - all apps use router pattern
 
 // healthHandler returns server health status
 func healthHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remediation Practice - Math</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .remediation-card {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .remediation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .remediation-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #e65100;
+        }
+
+        .difficulty-badge {
+            background: #ff9800;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .remediation-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stat {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.6em;
+            font-weight: bold;
+            color: #ff9800;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff9800 0%, #f57c00 100%);
+        }
+
+        .remediation-description {
+            color: #bf360c;
+            font-size: 0.95em;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #f57c00;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #ff9800;
+            border: 2px solid #ff9800;
+        }
+
+        .btn-secondary:hover {
+            background: #fff3e0;
+        }
+
+        .tips-section {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tips-section h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+        }
+
+        .tips-section ul {
+            list-style: none;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .tips-section li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .tips-section li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .priority-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .priority-high {
+            background: #f44336;
+        }
+
+        .priority-medium {
+            background: #ff9800;
+        }
+
+        .priority-low {
+            background: #4caf50;
+        }
+
+        .back-button {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .back-button .btn {
+            padding: 12px 40px;
+            font-size: 1.05em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .remediation-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .difficulty-badge {
+                margin-top: 10px;
+            }
+
+            .remediation-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 Remediation Practice</h1>
+            <p>Focus on weak areas and improve mastery</p>
+        </header>
+
+        <div class="content">
+            <div class="section">
+                <h2>Areas Needing Improvement</h2>
+
+                <div class="remediation-card">
+                    <div class="remediation-header">
+                        <div class="remediation-title">
+                            <span class="priority-indicator priority-high"></span>
+                            Subtraction with Regrouping
+                        </div>
+                        <div class="difficulty-badge">Level 8</div>
+                    </div>
+
+                    <div class="remediation-stats">
+                        <div class="stat">
+                            <div class="stat-label">Current Accuracy</div>
+                            <div class="stat-value">76%</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Target Accuracy</div>
+                            <div class="stat-value">85%</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Error Count</div>
+                            <div class="stat-value">7</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Practice Sessions</div>
+                            <div class="stat-value">12</div>
+                        </div>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 76%"></div>
+                    </div>
+
+                    <div class="remediation-description">
+                        You've made good progress on this skill, but there's still room for improvement. Focus on problems like 32 - 17 where regrouping from tens place is required. Practice 10-15 problems in each session.
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="startRemediation('subtraction')">
+                            Start Practice
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.location='/math/analytics'">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+
+                <div class="remediation-card">
+                    <div class="remediation-header">
+                        <div class="remediation-title">
+                            <span class="priority-indicator priority-high"></span>
+                            Division Facts
+                        </div>
+                        <div class="difficulty-badge">Level 7</div>
+                    </div>
+
+                    <div class="remediation-stats">
+                        <div class="stat">
+                            <div class="stat-label">Current Accuracy</div>
+                            <div class="stat-value">71%</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Target Accuracy</div>
+                            <div class="stat-value">85%</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Error Count</div>
+                            <div class="stat-value">11</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Practice Sessions</div>
+                            <div class="stat-value">9</div>
+                        </div>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 71%"></div>
+                    </div>
+
+                    <div class="remediation-description">
+                        Division requires more practice to build fluency. Remember that division is the inverse of multiplication - if you know 7 × 8 = 56, then 56 ÷ 8 = 7. Start with division by 2, 5, and 10 as these are often easier.
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="startRemediation('division')">
+                            Start Practice
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.location='/math/analytics'">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+
+                <div class="remediation-card">
+                    <div class="remediation-header">
+                        <div class="remediation-title">
+                            <span class="priority-indicator priority-medium"></span>
+                            Two-Digit Subtraction
+                        </div>
+                        <div class="difficulty-badge">Level 6</div>
+                    </div>
+
+                    <div class="remediation-stats">
+                        <div class="stat">
+                            <div class="stat-label">Current Accuracy</div>
+                            <div class="stat-value">80%</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Target Accuracy</div>
+                            <div class="stat-value">90%</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Error Count</div>
+                            <div class="stat-value">4</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Practice Sessions</div>
+                            <div class="stat-value">15</div>
+                        </div>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 80%"></div>
+                    </div>
+
+                    <div class="remediation-description">
+                        You're close to mastering this skill! Continue with targeted practice on problems that don't require regrouping mixed with those that do. Focus on accuracy to reach your 90% target.
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="startRemediation('subtraction-2digit')">
+                            Start Practice
+                        </button>
+                        <button class="btn btn-secondary" onclick="window.location='/math/analytics'">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tips-section">
+                <h3>💡 Remediation Success Tips</h3>
+                <ul>
+                    <li>Focus on one skill at a time rather than jumping between topics</li>
+                    <li>Start with easier versions of the skill and gradually increase difficulty</li>
+                    <li>Use paper and pencil to work through problems step by step</li>
+                    <li>Don't rush - accuracy is more important than speed at this stage</li>
+                    <li>Take breaks between practice sessions to avoid mental fatigue</li>
+                    <li>Review correct answers as much as mistakes to reinforce learning</li>
+                    <li>Celebrate small wins - even reaching 75% is progress!</li>
+                </ul>
+            </div>
+
+            <div class="back-button">
+                <button class="btn" onclick="window.location='/math'">← Back to Home</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startRemediation(area) {
+            const modeMap = {
+                'subtraction': 'subtraction',
+                'division': 'division',
+                'subtraction-2digit': 'subtraction'
+            };
+            window.location = `/math/practice?mode=${modeMap[area]}`;
+        }
+    </script>
+</body>
+</html>

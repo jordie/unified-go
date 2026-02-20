@@ -1,0 +1,95 @@
+{{define "content"}}
+<div class="content">
+    <h1>📚 Welcome to Reading App</h1>
+
+    {{if .User}}
+        <div style="margin-bottom: 2rem;">
+            <p style="font-size: 1.1rem; color: #666;">Welcome back, <strong>{{.User.Username}}</strong>!</p>
+        </div>
+
+        {{if .Stats}}
+            <div style="margin-bottom: 2rem;">
+                <h2>Your Reading Progress</h2>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="value">{{.Stats.TotalSessionsCount}}</div>
+                        <div class="label">Total Reading Sessions</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value">{{printf "%.1f" .Stats.AverageWPM}}</div>
+                        <div class="label">Average Words Per Minute</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value">{{printf "%.1f" .Stats.AverageAccuracy}}%</div>
+                        <div class="label">Average Accuracy</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="value">{{printf "%.1f" .Stats.BestWPM}}</div>
+                        <div class="label">Best WPM</div>
+                    </div>
+                </div>
+            </div>
+        {{end}}
+
+        <div style="margin-bottom: 2rem;">
+            <h2>Quick Actions</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 10px; color: white; text-align: center;">
+                    <h3 style="color: white; margin-bottom: 1rem;">📖 Start Reading</h3>
+                    <p style="margin-bottom: 1.5rem; color: rgba(255,255,255,0.9);">Pick a book and improve your reading speed and comprehension</p>
+                    <a href="/books" class="btn" style="background: white; color: #667eea; font-weight: 600;">Choose a Book</a>
+                </div>
+
+                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 2rem; border-radius: 10px; color: white; text-align: center;">
+                    <h3 style="color: white; margin-bottom: 1rem;">📊 View Progress</h3>
+                    <p style="margin-bottom: 1.5rem; color: rgba(255,255,255,0.9);">Track your reading journey and see how you've improved</p>
+                    <a href="/dashboard" class="btn" style="background: white; color: #f5576c; font-weight: 600;">View Dashboard</a>
+                </div>
+
+                <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 2rem; border-radius: 10px; color: white; text-align: center;">
+                    <h3 style="color: white; margin-bottom: 1rem;">🏆 Leaderboard</h3>
+                    <p style="margin-bottom: 1.5rem; color: rgba(255,255,255,0.9);">Compete with other readers and see where you rank</p>
+                    <a href="/leaderboard" class="btn" style="background: white; color: #00f2fe; font-weight: 600;">View Rankings</a>
+                </div>
+            </div>
+        </div>
+
+        {{if .RecommendedBooks}}
+            <div style="margin-bottom: 2rem;">
+                <h2>📚 Recommended for You</h2>
+                <div class="grid">
+                    {{range .RecommendedBooks}}
+                        <div class="card">
+                            <h3>{{.Title}}</h3>
+                            <p><strong>Author:</strong> {{.Author}}</p>
+                            <p><strong>Level:</strong> <span class="difficulty {{.ReadingLevel}}">{{.ReadingLevel}}</span></p>
+                            <p><strong>Words:</strong> {{.WordCount}}</p>
+                            <p>{{.Content | truncate 100}}</p>
+                            <div style="margin-top: 1rem;">
+                                <a href="/read/{{.ID}}" class="btn">Start Reading</a>
+                            </div>
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        {{end}}
+
+        <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #667eea;">
+            <h3>💡 Tips for Better Reading</h3>
+            <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.8;">
+                <li>Read daily to build consistent reading habits</li>
+                <li>Start with books at your level and gradually increase difficulty</li>
+                <li>Focus on comprehension first, then improve speed</li>
+                <li>Review your progress regularly to track improvement</li>
+                <li>Practice challenging words to expand your vocabulary</li>
+            </ul>
+        </div>
+    {{else}}
+        <div class="alert alert-info">
+            <h2>Get Started Today!</h2>
+            <p>Sign in or create an account to start improving your reading skills.</p>
+            <button onclick="document.getElementById('userModal').style.display='block'" class="btn">Get Started</button>
+        </div>
+    {{end}}
+</div>
+{{end}}

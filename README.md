@@ -137,17 +137,43 @@ Returns server health status with Go version, uptime, and resource usage.
 
 ### API Routes (JSON)
 
+#### Typing App
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/typing` | GET | List typing lessons |
-| `/api/typing/progress` | POST | Save typing progress |
-| `/api/math` | GET | List math problems |
-| `/api/math/progress` | POST | Save math progress |
-| `/api/reading` | GET | List reading books |
-| `/api/reading/progress` | POST | Save reading progress |
-| `/api/piano` | GET | List piano songs |
-| `/api/piano/progress` | POST | Save piano progress |
-| `/api/dashboard/stats` | GET | Get dashboard statistics |
+| `/typing/api/leaderboard` | GET | Top typing performers |
+| `/typing/api/test` | POST | Create typing test |
+| `/typing/api/users/{id}/stats` | GET | User typing statistics |
+
+#### Math App
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/math/api/problem` | POST | Generate math problem |
+| `/math/api/session/complete` | POST | Complete quiz session |
+| `/math/api/users/{id}/stats` | GET | User math statistics |
+| `/math/api/leaderboard` | GET | Math leaderboard |
+
+#### Reading App
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/reading/api/passages` | GET | List reading passages |
+| `/reading/api/answer` | POST | Submit reading answer |
+| `/reading/api/users/{id}/stats` | GET | User reading statistics |
+| `/reading/api/leaderboard` | GET | Reading leaderboard |
+
+#### Piano App
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/piano/api/songs` | GET | List piano songs (20 pieces) |
+| `/piano/api/songs/{id}` | GET | Get song details |
+| `/piano/api/lessons` | POST | Start piano lesson |
+| `/piano/api/users/{id}/progress` | GET | User piano progress |
+| `/piano/api/leaderboard` | GET | Piano leaderboard |
+
+#### Dashboard
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/dashboard` | GET | Main dashboard |
+| `/health` | GET | Server health status |
 
 ## Database Schema
 
@@ -155,13 +181,34 @@ The application uses SQLite with WAL (Write-Ahead Logging) mode for concurrent a
 
 ### Tables
 
+**Core**
 - `users` - User accounts and authentication
 - `sessions` - Session storage
-- `typing_progress` - Typing lesson progress
-- `math_progress` - Math problem progress
-- `reading_progress` - Reading book progress
-- `piano_progress` - Piano song progress
 - `schema_migrations` - Database migration tracking
+
+**Typing App**
+- `typing_progress` - Typing lesson progress
+- `typing_tests` - Individual typing tests
+- `typing_results` - Test results with metrics
+
+**Math App**
+- `math_progress` - Math problem progress
+- `math_problems` - Problem catalog
+- `math_sessions` - Quiz sessions
+- `math_user_stats` - User statistics
+
+**Reading App**
+- `reading_progress` - Reading book progress
+- `reading_passages` - Reading comprehension passages
+- `reading_questions` - Associated quiz questions
+- `reading_results` - Answer results
+
+**Piano App**
+- `songs` - Piano song catalog (20 classical pieces)
+- `piano_lessons` - Practice sessions
+- `practice_sessions` - MIDI recordings
+- `music_theory_quizzes` - Theory quiz attempts
+- `user_music_metrics` - User statistics
 
 ### Migrations
 
@@ -254,25 +301,39 @@ docker run -p 5000:5000 unified-go
 - ✅ Placeholder handlers for all apps
 - ✅ Health check endpoint
 
-### Phase 2: App Migration (Next)
-- Migrate typing app Python code to Go
-- Migrate math app Python code to Go
-- Migrate reading app Python code to Go
-- Migrate piano app Python code to Go
-- Port all templates and static assets
+### Phase 2: Typing App (COMPLETE)
+- ✅ Typing practice with WPM and accuracy tracking
+- ✅ Real-time metrics calculation
+- ✅ User leaderboards
+- ✅ Progress history
 
-### Phase 3: Optimization
-- Implement caching
-- Add WebSocket support
-- Optimize database queries
-- Add monitoring/metrics
-- Docker containerization
+### Phase 3: Math App (COMPLETE)
+- ✅ 6 problem types (addition, subtraction, multiplication, division, fractions, algebra)
+- ✅ 4 difficulty levels (easy, medium, hard, very hard)
+- ✅ Score calculation and tracking
+- ✅ User statistics and recommendations
 
-### Phase 4: Production
+### Phase 4: Reading App (COMPLETE)
+- ✅ Reading comprehension with passages
+- ✅ Multiple-choice questions
+- ✅ Performance metrics
+- ✅ Category-based filtering
+
+### Phase 5: Piano App (IN PROGRESS)
+- ✅ Song catalog with 20+ classical pieces
+- ✅ 4 difficulty levels (beginner to master)
+- ✅ Practice session tracking
+- ✅ Performance metrics (accuracy, tempo)
+- 🔄 Handler optimization (Subtask 4: Documentation)
+- ⏳ Music theory quizzes
+- ⏳ MIDI recording and playback
+
+### Phase 6: Optimization & Production
+- Performance tuning
 - Load testing
 - Security audit
+- Docker containerization
 - Deploy to production
-- Monitor and iterate
 
 ## Dependencies
 

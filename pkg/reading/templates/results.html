@@ -1,0 +1,150 @@
+{{define "content"}}
+<div class="content">
+    <h1>📊 Reading Session Results</h1>
+
+    {{if .Session}}
+        <div class="alert alert-success">
+            <h2>✓ Great Job!</h2>
+            <p>You've completed your reading session. Here's how you performed:</p>
+        </div>
+
+        <div style="margin: 2rem 0;">
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.WPM}}</div>
+                    <div class="label">Words Per Minute</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.Accuracy}}%</div>
+                    <div class="label">Accuracy</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.ComprehensionScore}}</div>
+                    <div class="label">Comprehension Score</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">{{printf "%.0f" .Session.Duration}}s</div>
+                    <div class="label">Reading Duration</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+            <h3 style="color: #667eea; margin-bottom: 1rem;">Session Details</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div>
+                    <strong>Book:</strong>
+                    <p>{{.Book.Title}}</p>
+                </div>
+                <div>
+                    <strong>Author:</strong>
+                    <p>{{.Book.Author}}</p>
+                </div>
+                <div>
+                    <strong>Reading Level:</strong>
+                    <p><span class="difficulty {{.Book.ReadingLevel}}">{{.Book.ReadingLevel}}</span></p>
+                </div>
+                <div>
+                    <strong>Reading Date:</strong>
+                    <p>{{.Session.StartTime.Format "Jan 2, 2006 15:04"}}</p>
+                </div>
+            </div>
+        </div>
+
+        {{if .PerformanceAnalysis}}
+            <div style="background: #f0f7ff; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #4facfe; margin: 2rem 0;">
+                <h3 style="color: #0c5460; margin-bottom: 1rem;">📈 Performance Analysis</h3>
+
+                {{if .PerformanceAnalysis.Strengths}}
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="color: #155724;">✓ Your Strengths</h4>
+                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem; line-height: 1.6;">
+                            {{range .PerformanceAnalysis.Strengths}}
+                                <li>{{.}}</li>
+                            {{end}}
+                        </ul>
+                    </div>
+                {{end}}
+
+                {{if .PerformanceAnalysis.ImprovementAreas}}
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="color: #856404;">⚡ Areas to Improve</h4>
+                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem; line-height: 1.6;">
+                            {{range .PerformanceAnalysis.ImprovementAreas}}
+                                <li>{{.}}</li>
+                            {{end}}
+                        </ul>
+                    </div>
+                {{end}}
+            </div>
+        {{end}}
+
+        {{if .ComprehensionTests}}
+            <div style="margin: 2rem 0;">
+                <h3 style="color: #667eea; margin-bottom: 1rem;">📝 Comprehension Test</h3>
+                <form onsubmit="submitComprehension(event)">
+                    {{range .ComprehensionTests}}
+                        <div class="form-group" style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #667eea;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">
+                                <strong>Question {{.ID}}:</strong> {{.Question}}
+                            </label>
+                            <input type="text" name="answer_{{.ID}}" placeholder="Your answer" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; margin-bottom: 0.5rem;">
+                            <small style="color: #999;">Correct answer: {{.CorrectAnswer}}</small>
+                        </div>
+                    {{end}}
+                    <button type="submit" class="btn" style="width: 100%; padding: 1rem;">Submit Comprehension Answers</button>
+                </form>
+            </div>
+        {{end}}
+
+        <div style="margin: 2rem 0; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <a href="/books" class="btn">Read Another Book</a>
+            <a href="/dashboard" class="btn btn-secondary">View Dashboard</a>
+            <a href="/" class="btn btn-secondary">Back to Home</a>
+        </div>
+
+        <div style="background: #f9f9f9; padding: 1rem; border-radius: 8px; margin-top: 2rem; text-align: center; color: #666;">
+            <p>Keep up the great work! Consistent reading practice will continue to improve your skills. 🌟</p>
+        </div>
+    {{else}}
+        <div class="alert alert-info">
+            <h2>No Session Found</h2>
+            <p>It looks like there's no reading session data to display. <a href="/books">Start reading</a> to create a new session!</p>
+        </div>
+    {{end}}
+</div>
+
+<script>
+    function submitComprehension(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const answers = {};
+
+        for (let [key, value] of formData.entries()) {
+            answers[key] = value;
+        }
+
+        fetch('/api/submit_comprehension', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: {{.Session.ID}},
+                answers: answers
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Comprehension answers submitted! Your score has been updated.');
+                window.location.href = '/dashboard';
+            } else {
+                alert('Error: ' + (data.error || 'Failed to submit answers'));
+            }
+        })
+        .catch(err => alert('Error: ' + err.message));
+    }
+</script>
+{{end}}

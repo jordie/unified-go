@@ -5,17 +5,15 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-
-	"github.com/jgirmay/unified-go/internal/database"
 )
 
 // Repository handles data access for typing operations
 type Repository struct {
-	db *database.Pool
+	db *sql.DB
 }
 
 // NewRepository creates a new typing repository
-func NewRepository(db *database.Pool) *Repository {
+func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 

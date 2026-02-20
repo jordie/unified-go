@@ -1,376 +1,489 @@
 package typing
 
 import (
+	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
-	"github.com/jgirmay/unified-go/internal/database"
-	"github.com/jgirmay/unified-go/internal/middleware"
+	"github.com/go-chi/chi/v5"
 )
 
-// Router handles routing for typing app
+// Router handles HTTP routes for typing app
 type Router struct {
-	mux     *http.ServeMux
+	db      *sql.DB
 	service *Service
-	authMW  *middleware.AuthMiddleware
+	router  chi.Router
 }
 
 // NewRouter creates a new typing router
-func NewRouter(db *database.Pool, authMW *middleware.AuthMiddleware) *Router {
-	service := NewServiceWithPool(db)
+func NewRouter(db *sql.DB) *Router {
+	repo := NewRepository(db)
+	service := NewService(repo)
+
 	return &Router{
-		mux:     http.NewServeMux(),
+		db:      db,
 		service: service,
-		authMW:  authMW,
+		router:  chi.NewRouter(),
 	}
 }
 
-// RegisterRoutes registers all typing routes
-func (r *Router) RegisterRoutes() *http.ServeMux {
-	// Public routes
-	r.mux.HandleFunc("/typing/", r.indexHandler)
+// Routes configures all typing app routes
+func (r *Router) Routes() chi.Router {
+	// Test endpoints
+	r.router.Post("/api/typing/test", r.CreateTest)
+	r.router.Get("/api/typing/test/{testId}", r.GetTest)
+	r.router.Get("/api/users/{userId}/typing/tests", r.GetUserTests)
 
-	// API routes
-	r.mux.HandleFunc("/typing/api/save_result", r.saveResultHandler)
-	r.mux.HandleFunc("/typing/api/stats", r.statsHandler)
-	r.mux.HandleFunc("/typing/api/leaderboard", r.leaderboardHandler)
-	r.mux.HandleFunc("/typing/api/history", r.historyHandler)
-	r.mux.HandleFunc("/typing/api/settings", r.settingsHandler)
+	// Statistics endpoints
+	r.router.Get("/api/users/{userId}/typing/stats", r.GetUserStats)
+	r.router.Get("/api/typing/leaderboard", r.GetLeaderboard)
+	r.router.Get("/api/users/{userId}/typing/history", r.GetHistory)
 
-	return r.mux
+	// Dashboard
+	r.router.Get("/api/typing/dashboard/{userId}", r.GetDashboard)
+
+	// Lessons endpoints
+	r.router.Get("/api/typing/lessons", r.GetLessons)
+	r.router.Get("/api/typing/lessons/{lessonId}", r.GetLesson)
+
+	// Racing endpoints
+	r.router.Post("/api/racing/start", r.StartRace)
+	r.router.Post("/api/racing/finish", r.FinishRace)
+	r.router.Get("/api/users/{userId}/racing/stats", r.GetRacingStats)
+	r.router.Get("/api/racing/leaderboard", r.GetRacingLeaderboard)
+	r.router.Get("/api/users/{userId}/racing/history", r.GetRaceHistory)
+	r.router.Get("/api/users/{userId}/racing/cars", r.GetUnlockedCars)
+	r.router.Get("/api/users/{userId}/racing/next-car", r.GetNextCarUnlock)
+	r.router.Get("/api/racing/ai-opponent", r.GenerateAIOpponentHandler)
+	r.router.Get("/api/users/{userId}/racing/level", r.GetRaceLevel)
+
+	return r.router
 }
 
-// indexHandler serves the typing app homepage
-func (r *Router) indexHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
+// CreateTest handles creating a new typing test
+func (r *Router) CreateTest(w http.ResponseWriter, req *http.Request) {
+	var testData struct {
+		UserID   uint    `json:"user_id"`
+		Content  string  `json:"content"`
+		Duration float64 `json:"duration"`
+		Errors   int     `json:"errors"`
+	}
 
-	// For now, serve a basic HTML page
-	// This will be replaced with template rendering in Subtask 5
-	html := `<!DOCTYPE html>
-<html>
-<head>
-    <title>Typing Practice - Unified Educational Platform</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
-        h1 { color: #333; }
-        .container { background: #f5f5f5; padding: 20px; border-radius: 5px; margin-top: 20px; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
-        .stat-card { background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .stat-value { font-size: 24px; font-weight: bold; color: #007bff; }
-        .stat-label { color: #666; margin-top: 5px; }
-        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-    </style>
-</head>
-<body>
-    <h1>Typing Practice</h1>
-    <div class="container">
-        <p>Welcome to the Typing Practice application! Improve your typing speed and accuracy.</p>
-        <button onclick="location.href='/typing/practice'">Start Typing Test</button>
-        <button onclick="location.href='/typing/stats'">View Statistics</button>
-        <button onclick="location.href='/typing/leaderboard'">View Leaderboard</button>
-    </div>
-    <div class="stats" id="stats"></div>
-    <script>
-        // Load user stats via API
-        fetch('/typing/api/stats')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    const stats = data.data;
-                    let html = '';
-                    html += '<div class="stat-card"><div class="stat-value">' + (stats.average_wpm || 0) + '</div><div class="stat-label">Average WPM</div></div>';
-                    html += '<div class="stat-card"><div class="stat-value">' + (stats.best_wpm || 0) + '</div><div class="stat-label">Best WPM</div></div>';
-                    html += '<div class="stat-card"><div class="stat-value">' + ((stats.average_accuracy || 0).toFixed(1)) + '%</div><div class="stat-label">Accuracy</div></div>';
-                    html += '<div class="stat-card"><div class="stat-value">' + (stats.total_tests || 0) + '</div><div class="stat-label">Total Tests</div></div>';
-                    document.getElementById('stats').innerHTML = html;
-                }
-            })
-            .catch(e => console.error('Failed to load stats:', e));
-    </script>
-</body>
-</html>`
-
-	w.Write([]byte(html))
-}
-
-// SaveResultRequest represents a save result API request
-type SaveResultRequest struct {
-	Content    string  `json:"content"`
-	TimeSpent  float64 `json:"time_spent"`
-	ErrorCount int     `json:"error_count"`
-	TestMode   string  `json:"test_mode"`
-}
-
-// APIResponse represents a standard API response
-type APIResponse struct {
-	Success bool        `json:"success"`
-	Message string      `json:"message,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-}
-
-// saveResultHandler handles POST /typing/api/save_result
-func (r *Router) saveResultHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if req.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
+	if err := json.NewDecoder(req.Body).Decode(&testData); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	// Get user ID from session
-	userID, ok := middleware.GetUserID(req)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Unauthorized",
-		})
-		return
-	}
-
-	// Parse request body
-	var reqData SaveResultRequest
-	if err := json.NewDecoder(req.Body).Decode(&reqData); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Invalid request body",
-		})
-		return
-	}
-
-	// Process test result
-	result, err := r.service.ProcessTestResult(
-		req.Context(),
-		uint(userID),
-		reqData.Content,
-		reqData.TimeSpent,
-		reqData.ErrorCount,
-	)
+	result, err := r.service.ProcessTypingTest(req.Context(), testData.UserID, testData.Content, testData.Duration, testData.Errors)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to save result: %v", err),
-		})
+		respondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(APIResponse{
-		Success: true,
-		Message: "Result saved successfully",
-		Data: map[string]interface{}{
-			"id":        result.ID,
-			"wpm":       result.WPM,
-			"raw_wpm":   result.RawWPM,
-			"accuracy":  result.Accuracy,
-			"timestamp": result.CreatedAt,
-		},
+	respondJSON(w, http.StatusCreated, result)
+}
+
+// GetTest retrieves a specific typing test
+func (r *Router) GetTest(w http.ResponseWriter, req *http.Request) {
+	testIdStr := chi.URLParam(req, "testId")
+	testID, err := strconv.ParseUint(testIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid test ID")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"id": testID,
+		"status": "placeholder - GetTest",
 	})
 }
 
-// statsHandler handles GET /typing/api/stats
-func (r *Router) statsHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if req.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
-		return
-	}
-
-	// Get user ID from session
-	userID, ok := middleware.GetUserID(req)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Unauthorized",
-		})
-		return
-	}
-
-	// Get user statistics
-	stats, err := r.service.GetUserStatistics(req.Context(), uint(userID))
+// GetUserTests retrieves user's typing tests
+func (r *Router) GetUserTests(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to get statistics: %v", err),
-		})
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(APIResponse{
-		Success: true,
-		Data:    stats,
+	limit := 20
+	offset := 0
+
+	if limitStr := req.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil {
+			limit = l
+		}
+	}
+
+	if offsetStr := req.URL.Query().Get("offset"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil {
+			offset = o
+		}
+	}
+
+	tests, err := r.service.repo.GetUserTests(req.Context(), uint(userID), limit, offset)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get tests")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"tests": tests,
+		"user_id": userID,
+		"limit": limit,
+		"offset": offset,
 	})
 }
 
-// leaderboardHandler handles GET /typing/api/leaderboard
-func (r *Router) leaderboardHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if req.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
+// GetUserStats retrieves user typing statistics
+func (r *Router) GetUserStats(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	// Parse query parameters
-	limit := 10
+	stats, err := r.service.GetUserProgress(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get stats")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, stats)
+}
+
+// GetLeaderboard retrieves typing leaderboard
+func (r *Router) GetLeaderboard(w http.ResponseWriter, req *http.Request) {
+	limit := 100
 	if limitStr := req.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 1000 {
 			limit = l
 		}
 	}
 
-	// Get leaderboard
 	leaderboard, err := r.service.GetLeaderboard(req.Context(), limit)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to get leaderboard: %v", err),
-		})
+		respondError(w, http.StatusInternalServerError, "Failed to get leaderboard")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(APIResponse{
-		Success: true,
-		Data: map[string]interface{}{
-			"leaderboard": leaderboard,
-			"count":       len(leaderboard),
-		},
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"leaderboard": leaderboard,
+		"limit": limit,
 	})
 }
 
-// historyHandler handles GET /typing/api/history
-func (r *Router) historyHandler(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if req.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
+// GetHistory retrieves user's typing history
+func (r *Router) GetHistory(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
 
-	// Get user ID from session
-	userID, ok := middleware.GetUserID(req)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Unauthorized",
-		})
+	days := 30
+	if daysStr := req.URL.Query().Get("days"); daysStr != "" {
+		if d, err := strconv.Atoi(daysStr); err == nil && d > 0 {
+			days = d
+		}
+	}
+
+	history, err := r.service.GetUserHistory(req.Context(), uint(userID), days)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get history")
 		return
 	}
 
-	// Parse query parameters
-	limit := 20
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"history": history,
+		"user_id": userID,
+		"days": days,
+	})
+}
+
+// GetDashboard retrieves user's typing dashboard
+func (r *Router) GetDashboard(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	stats, err := r.service.GetUserProgress(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get dashboard")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"stats": stats,
+		"skill_level": EstimateTypingLevel(stats.AverageWPM),
+	})
+}
+
+// GetLessons retrieves available typing lessons
+func (r *Router) GetLessons(w http.ResponseWriter, req *http.Request) {
+	lessons := []map[string]interface{}{
+		{"id": 1, "title": "Home Row Keys", "difficulty": "beginner", "duration_minutes": 5},
+		{"id": 2, "title": "Top Row Keys", "difficulty": "beginner", "duration_minutes": 5},
+		{"id": 3, "title": "Bottom Row Keys", "difficulty": "beginner", "duration_minutes": 5},
+		{"id": 4, "title": "Number Keys", "difficulty": "intermediate", "duration_minutes": 10},
+		{"id": 5, "title": "Symbol Keys", "difficulty": "intermediate", "duration_minutes": 10},
+		{"id": 6, "title": "Speed Test 1", "difficulty": "advanced", "duration_minutes": 1},
+		{"id": 7, "title": "Speed Test 2", "difficulty": "advanced", "duration_minutes": 5},
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"lessons": lessons,
+		"total": len(lessons),
+	})
+}
+
+// GetLesson retrieves a specific typing lesson
+func (r *Router) GetLesson(w http.ResponseWriter, req *http.Request) {
+	lessonIdStr := chi.URLParam(req, "lessonId")
+	lessonID64, err := strconv.ParseUint(lessonIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid lesson ID")
+		return
+	}
+
+	lessonID := uint(lessonID64)
+
+	lessons := map[uint]map[string]interface{}{
+		1: {"id": 1, "title": "Home Row Keys", "difficulty": "beginner", "content": "asdfghjkl;"},
+		2: {"id": 2, "title": "Top Row Keys", "difficulty": "beginner", "content": "qwertyuiop"},
+		3: {"id": 3, "title": "Bottom Row Keys", "difficulty": "beginner", "content": "zxcvbnm,./"},
+	}
+
+	if lesson, exists := lessons[lessonID]; exists {
+		respondJSON(w, http.StatusOK, lesson)
+	} else {
+		respondError(w, http.StatusNotFound, "Lesson not found")
+	}
+}
+
+// StartRace initiates a new racing session
+func (r *Router) StartRace(w http.ResponseWriter, req *http.Request) {
+	var raceStart struct {
+		UserID     uint   `json:"user_id"`
+		Difficulty string `json:"difficulty"`
+	}
+
+	if err := json.NewDecoder(req.Body).Decode(&raceStart); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if raceStart.UserID == 0 {
+		respondError(w, http.StatusBadRequest, "user_id is required")
+		return
+	}
+
+	// Generate AI opponent
+	aiOpponent := r.service.GenerateAIOpponent(raceStart.Difficulty)
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"ai_opponent": aiOpponent,
+		"text_sample": r.service.GetSelectedText("common_words"),
+	})
+}
+
+// FinishRace completes a racing session and saves results
+func (r *Router) FinishRace(w http.ResponseWriter, req *http.Request) {
+	var raceFinish struct {
+		UserID   uint    `json:"user_id"`
+		WPM      float64 `json:"wpm"`
+		Accuracy float64 `json:"accuracy"`
+		RaceTime float64 `json:"race_time"`
+		Placement int    `json:"placement"`
+	}
+
+	if err := json.NewDecoder(req.Body).Decode(&raceFinish); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	race, err := r.service.ProcessRaceResult(req.Context(), raceFinish.UserID, raceFinish.WPM, raceFinish.Accuracy, raceFinish.RaceTime, raceFinish.Placement)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, race)
+}
+
+// GetRacingStats retrieves user's racing statistics
+func (r *Router) GetRacingStats(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	stats, err := r.service.GetRacingStats(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get racing stats")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, stats)
+}
+
+// GetRacingLeaderboard retrieves racing leaderboard
+func (r *Router) GetRacingLeaderboard(w http.ResponseWriter, req *http.Request) {
+	metric := req.URL.Query().Get("metric")
+	if metric == "" {
+		metric = "total_xp"
+	}
+
+	limit := 10
 	if limitStr := req.URL.Query().Get("limit"); limitStr != "" {
-		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 1000 {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
 			limit = l
 		}
 	}
 
+	leaderboard, err := r.service.GetRacingLeaderboard(req.Context(), metric, limit)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get racing leaderboard")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"leaderboard": leaderboard,
+		"metric":      metric,
+		"limit":       limit,
+	})
+}
+
+// GetRaceHistory retrieves user's race history
+func (r *Router) GetRaceHistory(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	limit := 20
 	offset := 0
+
+	if limitStr := req.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
 	if offsetStr := req.URL.Query().Get("offset"); offsetStr != "" {
 		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
 			offset = o
 		}
 	}
 
-	// Get test history
-	history, err := r.service.GetUserTestHistory(req.Context(), uint(userID), limit, offset)
+	races, err := r.service.GetRaceHistory(req.Context(), uint(userID), limit, offset)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to get history: %v", err),
-		})
+		respondError(w, http.StatusInternalServerError, "Failed to get race history")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(APIResponse{
-		Success: true,
-		Data: map[string]interface{}{
-			"history": history,
-			"count":   len(history),
-			"limit":   limit,
-			"offset":  offset,
-		},
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"races":  races,
+		"limit":  limit,
+		"offset": offset,
 	})
 }
 
-// settingsHandler handles POST /typing/api/settings
-func (r *Router) settingsHandler(w http.ResponseWriter, req *http.Request) {
+// GetUnlockedCars retrieves unlocked cars for user
+func (r *Router) GetUnlockedCars(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	cars, err := r.service.GetUnlockedCars(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get cars")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"cars": cars,
+	})
+}
+
+// GetNextCarUnlock retrieves next car unlock information
+func (r *Router) GetNextCarUnlock(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	nextCar, xpNeeded, err := r.service.GetNextCarUnlock(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get next car")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"next_car":  nextCar,
+		"xp_needed": xpNeeded,
+	})
+}
+
+// GenerateAIOpponentHandler generates an AI opponent
+func (r *Router) GenerateAIOpponentHandler(w http.ResponseWriter, req *http.Request) {
+	difficulty := req.URL.Query().Get("difficulty")
+	if difficulty == "" {
+		difficulty = "medium"
+	}
+
+	opponent := r.service.GenerateAIOpponent(difficulty)
+	respondJSON(w, http.StatusOK, opponent)
+}
+
+// GetRaceLevel retrieves user's racing skill level
+func (r *Router) GetRaceLevel(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	level, err := r.service.CalculateRaceLevel(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get race level")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"level": level,
+	})
+}
+
+// Helper functions
+func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
 
-	if req.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Method not allowed",
-		})
-		return
-	}
-
-	// Get user ID from session
-	userID, ok := middleware.GetUserID(req)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Unauthorized",
-		})
-		return
-	}
-
-	// Parse request body
-	var settings map[string]interface{}
-	if err := json.NewDecoder(req.Body).Decode(&settings); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Error:   "Invalid request body",
-		})
-		return
-	}
-
-	// For now, just acknowledge the settings save
-	// In a full implementation, this would save to a preferences table
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(APIResponse{
-		Success: true,
-		Message: "Settings saved successfully",
-		Data: map[string]interface{}{
-			"user_id":  userID,
-			"settings": settings,
-		},
+func respondError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"error": message,
+		"status": status,
 	})
 }

@@ -1,0 +1,177 @@
+{{define "content"}}
+<div class="content">
+    <h1>📝 Comprehension Test</h1>
+
+    {{if .ComprehensionTests}}
+        <div style="margin-bottom: 2rem;">
+            <p style="font-size: 1.1rem; color: #666;">
+                Answer the following questions about the passage you just read. Do your best to answer based on what you remember and understood.
+            </p>
+            <div style="background: #f0f7ff; padding: 1rem; border-radius: 8px; border-left: 4px solid #4facfe; margin: 1rem 0;">
+                <strong>📌 Tips:</strong>
+                <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
+                    <li>Try to answer from memory without re-reading</li>
+                    <li>Answer all questions - even partial answers help us understand your comprehension</li>
+                    <li>Be honest with your responses for accurate assessment</li>
+                </ul>
+            </div>
+        </div>
+
+        <form id="comprehensionForm" onsubmit="submitComprehension(event)">
+            <div style="position: relative;">
+                <div id="questionsContainer">
+                    {{range $index, $test := .ComprehensionTests}}
+                        <div class="form-group" style="background: white; padding: 2rem; border: 2px solid #eee; border-radius: 8px; margin-bottom: 1.5rem;">
+                            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                                <div style="background: #667eea; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 1rem;">
+                                    {{add $index 1}}
+                                </div>
+                                <label style="margin: 0; font-weight: 600; color: #333; flex: 1;">
+                                    {{.Question}}
+                                </label>
+                            </div>
+
+                            <div style="margin: 1rem 0;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                                    <div>
+                                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #666;">Your Answer:</label>
+                                        <input
+                                            type="text"
+                                            name="answer_{{.ID}}"
+                                            placeholder="Type your answer here..."
+                                            required
+                                            style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;"
+                                        >
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #666;">Confidence Level:</label>
+                                        <select name="confidence_{{.ID}}" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                                            <option value="very_confident">Very Confident</option>
+                                            <option value="confident" selected>Confident</option>
+                                            <option value="uncertain">Uncertain</option>
+                                            <option value="guess">Guess</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <small style="color: #999; display: block;">💡 Correct answer: <strong>{{.CorrectAnswer}}</strong></small>
+                            </div>
+                        </div>
+                    {{end}}
+                </div>
+
+                <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+                    <h3 style="color: #667eea; margin-top: 0;">Progress</h3>
+                    <div style="background: white; height: 20px; border-radius: 10px; overflow: hidden; margin: 1rem 0;">
+                        <div id="progressBar" style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <p id="progressText" style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;">0 of {{len .ComprehensionTests}} questions answered</p>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin: 2rem 0;">
+                <button type="submit" class="btn" id="submitBtn">
+                    ✓ Submit Comprehension Test
+                </button>
+                <a href="/dashboard" class="btn btn-secondary">Skip for Now</a>
+            </div>
+        </form>
+    {{else}}
+        <div class="alert alert-info">
+            <h2>No Comprehension Test Available</h2>
+            <p>This passage doesn't have a comprehension test yet. <a href="/books">Choose another book</a> to continue improving your reading skills!</p>
+        </div>
+    {{end}}
+</div>
+
+<script>
+    function updateProgress() {
+        const form = document.getElementById('comprehensionForm');
+        if (!form) return;
+
+        const inputs = form.querySelectorAll('input[type="text"]');
+        const answered = Array.from(inputs).filter(input => input.value.trim().length > 0).length;
+        const total = inputs.length;
+
+        const percentage = total > 0 ? (answered / total) * 100 : 0;
+        document.getElementById('progressBar').style.width = percentage + '%';
+        document.getElementById('progressText').textContent = `${answered} of ${total} questions answered`;
+    }
+
+    function submitComprehension(event) {
+        event.preventDefault();
+
+        const form = document.getElementById('comprehensionForm');
+        const formData = new FormData(form);
+        const answers = {};
+        const confidences = {};
+
+        for (let [key, value] of formData.entries()) {
+            if (key.startsWith('answer_')) {
+                const questionId = key.replace('answer_', '');
+                answers[questionId] = value;
+            } else if (key.startsWith('confidence_')) {
+                const questionId = key.replace('confidence_', '');
+                confidences[questionId] = value;
+            }
+        }
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        fetch('/api/submit_comprehension', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: {{if .SessionID}}{{.SessionID}}{{else}}null{{end}},
+                answers: answers,
+                confidences: confidences
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const results = data.data || {};
+                const correctCount = results.correct_answers || 0;
+                const totalCount = Object.keys(answers).length;
+                const score = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+
+                alert(`Comprehension Test Complete!\n\nYour Score: ${score}%\nCorrect: ${correctCount}/${totalCount}\n\nGreat work! Check your progress in the dashboard.`);
+                window.location.href = '/dashboard';
+            } else {
+                alert('Error: ' + (data.error || 'Failed to submit answers'));
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✓ Submit Comprehension Test';
+            }
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = '✓ Submit Comprehension Test';
+        });
+    }
+
+    // Update progress as user types
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('comprehensionForm');
+        if (form) {
+            const inputs = form.querySelectorAll('input[type="text"]');
+            inputs.forEach(input => {
+                input.addEventListener('input', updateProgress);
+            });
+            updateProgress();
+        }
+    });
+
+    // Helper function for template
+    function add(a, b) {
+        return a + b;
+    }
+
+    function len(arr) {
+        return arr ? arr.length : 0;
+    }
+</script>
+{{end}}

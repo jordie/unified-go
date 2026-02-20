@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized Practice Plan - Math</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .recommendation-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+
+        .recommendation-box h2 {
+            color: #1565c0;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .recommendation-box p {
+            color: #0d47a1;
+            line-height: 1.6;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .plan-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .plan-item.priority-high {
+            border-left-color: #f44336;
+        }
+
+        .plan-item.priority-medium {
+            border-left-color: #ff9800;
+        }
+
+        .plan-item.priority-low {
+            border-left-color: #4caf50;
+        }
+
+        .plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .plan-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .priority-badge {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .priority-badge.high {
+            background: #f44336;
+        }
+
+        .priority-badge.medium {
+            background: #ff9800;
+        }
+
+        .priority-badge.low {
+            background: #4caf50;
+        }
+
+        .plan-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+
+        .detail {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .detail-label {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .detail-value {
+            color: #333;
+            font-weight: bold;
+        }
+
+        .plan-description {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-start {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .schedule-table th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .schedule-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .schedule-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .tips-section {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 25px;
+            border-radius: 10px;
+        }
+
+        .tips-section h3 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .tips-section ul {
+            list-style: none;
+            color: #555;
+            line-height: 1.8;
+        }
+
+        .tips-section li {
+            margin-bottom: 12px;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .tips-section li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .back-button {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .back-button .btn {
+            padding: 12px 40px;
+            font-size: 1.05em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .back-button .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .schedule-table {
+                font-size: 0.9em;
+            }
+
+            .schedule-table th,
+            .schedule-table td {
+                padding: 10px;
+            }
+
+            .plan-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .priority-badge {
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📅 Personalized Practice Plan</h1>
+            <p>Your customized learning roadmap</p>
+        </header>
+
+        <div class="content">
+            <div class="recommendation-box">
+                <h2>📌 Overall Recommendation</h2>
+                <p>Based on your current performance, focus on strengthening subtraction and division skills. Practice weak areas 3-4 times per week, and continue daily spaced repetition for mastered facts. Your morning practice sessions show best results - schedule difficult topics during these times.</p>
+            </div>
+
+            <div class="section">
+                <h2>🎯 This Week's Focus</h2>
+                <div class="plan-item priority-high">
+                    <div class="plan-header">
+                        <div class="plan-title">Subtraction with Regrouping</div>
+                        <div class="priority-badge high">HIGH PRIORITY</div>
+                    </div>
+                    <div class="plan-details">
+                        <div class="detail">
+                            <div class="detail-label">Current Accuracy</div>
+                            <div class="detail-value">76%</div>
+                        </div>
+                        <div class="detail">
+                            <div class="detail-label">Target Accuracy</div>
+                            <div class="detail-value">85%</div>
+                        </div>
+                        <div class="detail">
+                            <div class="detail-label">Recommended Sessions</div>
+                            <div class="detail-value">4 sessions</div>
+                        </div>
+                    </div>
+                    <div class="plan-description">
+                        Focus on two-digit subtraction with regrouping. Work through 10-15 problems per session. This is your weakest area and will significantly boost overall performance.
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-start" onclick="startPractice('subtraction')">Start Practice</button>
+                    </div>
+                </div>
+
+                <div class="plan-item priority-high">
+                    <div class="plan-header">
+                        <div class="plan-title">Division Facts</div>
+                        <div class="priority-badge high">HIGH PRIORITY</div>
+                    </div>
+                    <div class="plan-details">
+                        <div class="detail">
+                            <div class="detail-label">Current Accuracy</div>
+                            <div class="detail-value">71%</div>
+                        </div>
+                        <div class="detail">
+                            <div class="detail-label">Target Accuracy</div>
+                            <div class="detail-value">85%</div>
+                        </div>
+                        <div class="detail">
+                            <div class="detail-label">Recommended Sessions</div>
+                            <div class="detail-value">4 sessions</div>
+                        </div>
+                    </div>
+                    <div class="plan-description">
+                        Master division facts through spaced repetition and multiplication connections. Start with division by 2, 5, and 10, then progress to single-digit divisors.
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-start" onclick="startPractice('division')">Start Practice</button>
+                    </div>
+                </div>
+
+                <div class="plan-item priority-medium">
+                    <div class="plan-header">
+                        <div class="plan-title">Maintain Addition Skills</div>
+                        <div class="priority-badge medium">MEDIUM PRIORITY</div>
+                    </div>
+                    <div class="plan-details">
+                        <div class="detail">
+                            <div class="detail-label">Current Accuracy</div>
+                            <div class="detail-value">92%</div>
+                        </div>
+                        <div class="detail">
+                            <div class="detail-label">Frequency</div>
+                            <div class="detail-value">Spaced repetition</div>
+                        </div>
+                        <div class="detail">
+                            <div class="detail-label">Recommended Sessions</div>
+                            <div class="detail-value">2 sessions</div>
+                        </div>
+                    </div>
+                    <div class="plan-description">
+                        Continue spaced repetition practice to maintain your excellent addition skills. Use the review feature to keep these facts fresh.
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-start" onclick="window.location='/math/spaced-repetition'">Review Now</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>📆 Weekly Schedule Recommendation</h2>
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th>Day</th>
+                            <th>Focus Area</th>
+                            <th>Duration</th>
+                            <th>Sessions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Monday</td>
+                            <td>Subtraction with Regrouping</td>
+                            <td>15 min</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>Tuesday</td>
+                            <td>Division Facts + SR Review</td>
+                            <td>20 min</td>
+                            <td>2</td>
+                        </tr>
+                        <tr>
+                            <td>Wednesday</td>
+                            <td>Spaced Repetition Review</td>
+                            <td>10 min</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>Thursday</td>
+                            <td>Subtraction + Division Mix</td>
+                            <td>20 min</td>
+                            <td>2</td>
+                        </tr>
+                        <tr>
+                            <td>Friday</td>
+                            <td>Free Choice + SR Review</td>
+                            <td>15 min</td>
+                            <td>2</td>
+                        </tr>
+                        <tr>
+                            <td>Saturday</td>
+                            <td>Challenge Mode (Mixed)</td>
+                            <td>20 min</td>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <td>Sunday</td>
+                            <td>Spaced Repetition Review</td>
+                            <td>10 min</td>
+                            <td>1</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="tips-section">
+                <h3>💡 Success Tips</h3>
+                <ul>
+                    <li>Practice during morning hours when your accuracy is highest</li>
+                    <li>Break sessions into 10-15 minute chunks for better retention</li>
+                    <li>Use spaced repetition for facts you've already mastered</li>
+                    <li>Focus on quality over quantity - accuracy matters more than speed</li>
+                    <li>Review weak areas at least 3 times before moving to new material</li>
+                    <li>Take 5-minute breaks between sessions to stay fresh</li>
+                </ul>
+            </div>
+
+            <div class="back-button">
+                <button class="btn" onclick="window.location='/math'">← Back to Home</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startPractice(mode) {
+            window.location = `/math/practice?mode=${mode}`;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<div class="content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2>Practice Session</h2>
+        <div style="text-align: right;">
+            <div style="font-size: 0.9em; color: #666;">Problem <span id="currentProblem">1</span> of {{ .TotalProblems }}</div>
+            <div style="font-size: 1.2em; font-weight: bold; color: #667eea;">Time: <span id="timer">0:00</span></div>
+        </div>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+    </div>
+
+    <div class="problem-container">
+        <div class="problem-question" id="problemQuestion">
+            Loading problem...
+        </div>
+
+        <div class="problem-options" id="problemOptions">
+            <!-- Options will be populated by JavaScript -->
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 30px;">
+            <button class="btn" onclick="checkAnswer()" style="flex: 1;">Check Answer</button>
+            <button class="btn btn-secondary" onclick="skipProblem()" style="flex: 1;">Skip Problem</button>
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+        <h3 style="color: #333; margin-bottom: 15px;">📊 Session Stats</h3>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
+            <div style="text-align: center;">
+                <div style="font-size: 0.9em; color: #666;">Correct</div>
+                <div style="font-size: 1.8em; font-weight: bold; color: #4caf50;" id="correctCount">0</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.9em; color: #666;">Incorrect</div>
+                <div style="font-size: 1.8em; font-weight: bold; color: #f44336;" id="incorrectCount">0</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.9em; color: #666;">Skipped</div>
+                <div style="font-size: 1.8em; font-weight: bold; color: #ff9800;" id="skippedCount">0</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="font-size: 0.9em; color: #666;">Accuracy</div>
+                <div style="font-size: 1.8em; font-weight: bold; color: #667eea;" id="accuracyValue">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; padding: 20px; background: #fff3e0; border-radius: 10px; border-left: 4px solid #ff9800;">
+        <h4 style="color: #333; margin-bottom: 10px;">💡 Tips for Success</h4>
+        <ul style="color: #666; margin-left: 20px; line-height: 1.6;">
+            <li>Read each problem carefully before answering</li>
+            <li>Double-check your arithmetic, especially with larger numbers</li>
+            <li>If stuck, use the skip button and come back later</li>
+            <li>Try to complete the session in one sitting for best results</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // Session configuration
+    const totalProblems = {{ .TotalProblems }};
+    const problemType = "{{ .ProblemType }}";
+    const difficulty = "{{ .Difficulty }}";
+
+    let currentProblem = 1;
+    let correct = 0;
+    let incorrect = 0;
+    let skipped = 0;
+    let selectedAnswer = null;
+    let sessionStartTime = Date.now();
+    let currentProblemTime = Date.now();
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        loadProblem();
+        startTimer();
+    });
+
+    function startTimer() {
+        setInterval(function() {
+            const elapsedSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
+            const minutes = Math.floor(elapsedSeconds / 60);
+            const seconds = elapsedSeconds % 60;
+            document.getElementById('timer').textContent =
+                minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+        }, 1000);
+    }
+
+    function loadProblem() {
+        // Simulate problem loading
+        const sampleProblems = [
+            { question: "What is 5 + 3?", answer: 8 },
+            { question: "What is 10 - 4?", answer: 6 },
+            { question: "What is 6 × 7?", answer: 42 },
+            { question: "What is 20 ÷ 5?", answer: 4 },
+            { question: "What is 15 + 25?", answer: 40 }
+        ];
+
+        const problem = sampleProblems[currentProblem - 1] || sampleProblems[0];
+        document.getElementById('problemQuestion').textContent = problem.question;
+
+        // Generate options
+        const correctAnswer = problem.answer;
+        const options = [correctAnswer];
+
+        // Add wrong answers
+        while (options.length < 4) {
+            const wrongAnswer = correctAnswer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 5) + 1);
+            if (!options.includes(wrongAnswer)) {
+                options.push(wrongAnswer);
+            }
+        }
+
+        // Shuffle options
+        options.sort(() => Math.random() - 0.5);
+
+        // Display options
+        const optionsContainer = document.getElementById('problemOptions');
+        optionsContainer.innerHTML = '';
+        options.forEach(option => {
+            const div = document.createElement('div');
+            div.className = 'problem-option';
+            div.textContent = option;
+            div.onclick = function() {
+                selectOption(this);
+                selectedAnswer = option;
+            };
+            optionsContainer.appendChild(div);
+        });
+
+        selectedAnswer = null;
+        updateProgress();
+    }
+
+    function selectOption(element) {
+        document.querySelectorAll('.problem-option').forEach(opt => opt.classList.remove('selected'));
+        element.classList.add('selected');
+    }
+
+    function checkAnswer() {
+        if (selectedAnswer === null) {
+            alert('Please select an answer');
+            return;
+        }
+
+        // Simulate checking (in real implementation, would verify against server)
+        if (Math.random() > 0.3) {  // 70% chance of correct
+            correct++;
+        } else {
+            incorrect++;
+        }
+
+        nextProblem();
+    }
+
+    function skipProblem() {
+        skipped++;
+        nextProblem();
+    }
+
+    function nextProblem() {
+        currentProblem++;
+
+        if (currentProblem > totalProblems) {
+            completeSession();
+        } else {
+            loadProblem();
+        }
+    }
+
+    function updateProgress() {
+        const percentage = (currentProblem / totalProblems) * 100;
+        document.getElementById('progressBar').style.width = percentage + '%';
+        document.getElementById('currentProblem').textContent = currentProblem;
+        document.getElementById('correctCount').textContent = correct;
+        document.getElementById('incorrectCount').textContent = incorrect;
+        document.getElementById('skippedCount').textContent = skipped;
+
+        const total = correct + incorrect + skipped;
+        const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+        document.getElementById('accuracyValue').textContent = accuracy + '%';
+    }
+
+    function completeSession() {
+        const elapsedSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
+        const score = Math.round((correct / totalProblems) * 100);
+
+        alert(
+            'Session Complete!\\n\\n' +
+            'Score: ' + score + '%\\n' +
+            'Correct: ' + correct + '/' + totalProblems + '\\n' +
+            'Time: ' + Math.floor(elapsedSeconds / 60) + 'm ' + (elapsedSeconds % 60) + 's\\n\\n' +
+            'Great job! Check your dashboard to see your stats.'
+        );
+
+        window.location.href = '/math/dashboard';
+    }
+</script>

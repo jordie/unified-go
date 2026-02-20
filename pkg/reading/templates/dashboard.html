@@ -1,0 +1,75 @@
+{{define "content"}}
+<div class="content">
+    <h1>📊 Your Reading Dashboard</h1>
+
+    {{if .Stats}}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="value">{{.Stats.TotalSessionsCount}}</div>
+                <div class="label">Total Sessions</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.1f" .Stats.AverageWPM}}</div>
+                <div class="label">Average WPM</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.1f" .Stats.BestWPM}}</div>
+                <div class="label">Best WPM</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.1f" .Stats.AverageAccuracy}}%</div>
+                <div class="label">Average Accuracy</div>
+            </div>
+        </div>
+
+        {{if .Progress}}
+            <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+                <h2>📈 Progress Overview</h2>
+                <p><strong>Estimated Level:</strong> {{.Progress.estimated_level}}</p>
+                {{if .Progress.trend}}
+                    <p><strong>Trend:</strong>
+                        {{if eq .Progress.trend.direction "improving"}}
+                            ⬆️ Improving ({{.Progress.trend.change}}% change)
+                        {{else if eq .Progress.trend.direction "declining"}}
+                            ⬇️ Declining ({{.Progress.trend.change}}% change)
+                        {{else}}
+                            → Neutral
+                        {{end}}
+                    </p>
+                {{end}}
+                <p><strong>Total Reading Time:</strong> {{printf "%.0f" .Progress.total_reading_time}} minutes</p>
+            </div>
+        {{end}}
+
+        {{if .Sessions}}
+            <h2>📋 Recent Sessions</h2>
+            <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Date</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">WPM</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Accuracy</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Comprehension</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Sessions}}
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 0.75rem;">{{.StartTime.Format "Jan 2, 2006"}}</td>
+                            <td style="padding: 0.75rem;">{{printf "%.1f" .WPM}}</td>
+                            <td style="padding: 0.75rem;">{{printf "%.1f" .Accuracy}}%</td>
+                            <td style="padding: 0.75rem;">{{printf "%.1f" .ComprehensionScore}}</td>
+                            <td style="padding: 0.75rem;">{{printf "%.0f" .Duration}}s</td>
+                        </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        {{end}}
+    {{else}}
+        <div class="alert alert-info">
+            No reading sessions yet. <a href="/books">Start reading a book</a> to track your progress!
+        </div>
+    {{end}}
+</div>
+{{end}}

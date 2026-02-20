@@ -1,0 +1,180 @@
+{{define "content"}}
+<div class="content">
+    <h1>🎹 {{.Song.Title}}</h1>
+    <p><strong>Composer:</strong> {{.Song.Composer}} | <strong>Difficulty:</strong> <span class="difficulty {{.Song.Difficulty}}">{{.Song.Difficulty}}</span></p>
+    <p><strong>BPM:</strong> {{.Song.BPM}} | <strong>Time Signature:</strong> {{.Song.TimeSignature}} | <strong>Key:</strong> {{.Song.KeySignature}}</p>
+
+    {{if .Song.Description}}
+        <p style="margin: 1rem 0; background: #f5f5f5; padding: 1rem; border-radius: 5px;">{{.Song.Description}}</p>
+    {{end}}
+
+    <div style="margin: 2rem 0;">
+        <h2>🎚️ Practice Controls</h2>
+        <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px;">
+            <div class="form-group">
+                <label for="recordStatus">Recording Status:</label>
+                <div id="recordStatus" style="padding: 0.75rem; background: #fff; border: 1px solid #ddd; border-radius: 5px; text-align: center;">
+                    <span id="statusText" style="color: #999;">Not recording</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="duration">Duration (seconds):</label>
+                <input type="number" id="duration" name="duration" min="1" placeholder="How long did you practice?" required>
+            </div>
+
+            <div class="form-group">
+                <label for="notesCorrect">Notes Played Correctly:</label>
+                <input type="number" id="notesCorrect" name="notesCorrect" min="0" max="{{.Song.TotalNotes}}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="recordedBPM">Recorded Tempo (BPM):</label>
+                <input type="number" id="recordedBPM" name="recordedBPM" min="40" max="300" value="{{.Song.BPM}}" required>
+            </div>
+
+            <div class="progress-bar" style="margin: 1rem 0;">
+                <div class="progress-fill" id="progressBar" style="width: 0%;">
+                    <span id="progressText">0%</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin: 1.5rem 0;">
+                <button type="button" class="btn" onclick="startRecording()" id="recordBtn">🔴 Start Recording</button>
+                <button type="button" class="btn btn-secondary" onclick="stopRecording()" id="stopBtn" disabled>⏹️ Stop Recording</button>
+                <button type="button" class="btn btn-secondary" onclick="downloadMIDI()" id="downloadBtn" disabled>⬇️ Download MIDI</button>
+            </div>
+
+            <button type="button" class="btn" onclick="submitPractice()">✓ Submit Practice Session</button>
+            <a href="/songs" class="btn btn-secondary">Back to Songs</a>
+        </div>
+    </div>
+
+    {{if .Session}}
+        <div class="alert alert-success">
+            <h3>✓ Practice Session Complete!</h3>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.Accuracy}}%</div>
+                    <div class="label">Accuracy</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.TempoAccuracy}}%</div>
+                    <div class="label">Tempo Accuracy</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.Score}}</div>
+                    <div class="label">Overall Score</div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 2rem;">Music Theory Quiz</h3>
+            <form onsubmit="submitTheoryQuiz(event)">
+                {{range .TheoryQuestions}}
+                    <div class="form-group" style="background: #f9f9f9; padding: 1rem; border-radius: 5px; margin-bottom: 1rem;">
+                        <label>{{.Question}}</label>
+                        <div style="margin-top: 0.5rem;">
+                            {{range .Options}}
+                                <label style="display: block; margin: 0.5rem 0;">
+                                    <input type="radio" name="answer_{{.ID}}" value="{{.}}"> {{.}}
+                                </label>
+                            {{end}}
+                        </div>
+                    </div>
+                {{end}}
+                <button type="submit" class="btn">Submit Quiz</button>
+            </form>
+        </div>
+    {{end}}
+</div>
+
+<script>
+    let isRecording = false;
+    let recordingStart = 0;
+
+    function startRecording() {
+        isRecording = true;
+        recordingStart = Date.now();
+        document.getElementById('recordBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        document.getElementById('statusText').textContent = 'Recording in progress...';
+        document.getElementById('statusText').style.color = '#dc3545';
+
+        // Update progress
+        const interval = setInterval(() => {
+            if (!isRecording) {
+                clearInterval(interval);
+                return;
+            }
+            const elapsed = (Date.now() - recordingStart) / 1000;
+            const duration = parseInt(document.getElementById('duration').value) || 60;
+            const percent = Math.min((elapsed / duration) * 100, 100);
+            updateProgress(percent);
+        }, 100);
+    }
+
+    function stopRecording() {
+        isRecording = false;
+        document.getElementById('recordBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+        document.getElementById('downloadBtn').disabled = false;
+        document.getElementById('statusText').textContent = 'Recording stopped';
+        document.getElementById('statusText').style.color = '#28a745';
+    }
+
+    function updateProgress(percent) {
+        document.getElementById('progressBar').style.width = percent + '%';
+        document.getElementById('progressText').textContent = Math.round(percent) + '%';
+    }
+
+    function downloadMIDI() {
+        const link = document.createElement('a');
+        link.href = '/api/midi/{{.Song.ID}}';
+        link.download = '{{.Song.Title}}.mid';
+        link.click();
+    }
+
+    function submitPractice() {
+        const notesCorrect = parseInt(document.getElementById('notesCorrect').value);
+        const totalNotes = {{.Song.TotalNotes}};
+
+        if (notesCorrect > totalNotes) {
+            alert('Notes correct cannot exceed total notes!');
+            return;
+        }
+
+        const duration = parseFloat(document.getElementById('duration').value);
+        const recordedBPM = parseFloat(document.getElementById('recordedBPM').value);
+
+        fetch('/api/practice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: 1,
+                song_id: {{.Song.ID}},
+                recorded_bpm: recordedBPM,
+                duration: duration,
+                notes_correct: notesCorrect,
+                notes_total: totalNotes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.id) {
+                alert('✓ Practice session saved! Score: ' + data.Score.toFixed(1));
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to save session'));
+            }
+        })
+        .catch(err => alert('Error: ' + err.message));
+    }
+
+    function submitTheoryQuiz(event) {
+        event.preventDefault();
+        alert('Theory quiz submitted!');
+    }
+</script>
+{{end}}
