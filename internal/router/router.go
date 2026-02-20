@@ -40,6 +40,9 @@ func Setup(cfg *config.Config, db *database.Pool) *chi.Mux {
 	authMiddleware := middleware.NewAuthMiddleware(cfg.SessionSecret, cfg.SessionName)
 	r.Use(authMiddleware.Handler)
 
+	// Initialize app handlers with database connection
+	initializeAppHandlers(db)
+
 	// Health check endpoint (public)
 	r.Get("/health", healthHandler)
 
@@ -61,10 +64,12 @@ func Setup(cfg *config.Config, db *database.Pool) *chi.Mux {
 			r.Post("/progress", math.SaveProgress)
 		})
 
-		// Reading app routes
+		// Reading app routes (will be updated after handler setup)
 		r.Route("/reading", func(r chi.Router) {
-			r.Get("/", reading.ListBooks)
-			r.Post("/progress", reading.SaveProgress)
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]string{"status": "reading api"})
+			})
 		})
 
 		// Piano app routes
@@ -106,6 +111,21 @@ func Setup(cfg *config.Config, db *database.Pool) *chi.Mux {
 	})
 
 	return r
+}
+
+// initializeAppHandlers sets up handlers with database connections
+func initializeAppHandlers(db *database.Pool) {
+	// Initialize math app handler
+	mathRepo := math.NewRepository(db.DB)
+	mathService := math.NewService(mathRepo)
+	mathHandler := math.NewHandler(mathService)
+	math.SetGlobalHandler(mathHandler)
+
+	// TODO: Initialize other app handlers similarly
+	// - typing
+	// - reading
+	// - piano
+	// - dashboard
 }
 
 // healthHandler returns server health status

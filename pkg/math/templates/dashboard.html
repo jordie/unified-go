@@ -1,0 +1,118 @@
+<div class="content">
+    <h2>Your Math Dashboard</h2>
+    <p style="color: #666; margin-bottom: 30px;">Track your progress and improvement over time</p>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Problems</h3>
+            <div class="value">{{ .Stats.TotalProblems }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Correct Answers</h3>
+            <div class="value">{{ .Stats.CorrectAnswers }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Accuracy</h3>
+            <div class="value">{{ printf "%.1f" .Stats.Accuracy }}%</div>
+        </div>
+        <div class="stat-card">
+            <h3>Skill Level</h3>
+            <div class="value" style="font-size: 1.8em;">
+                {{ if eq (EstimateLevel .Stats.Accuracy) "beginner" }}🌱{{ end }}
+                {{ if eq (EstimateLevel .Stats.Accuracy) "intermediate" }}📚{{ end }}
+                {{ if eq (EstimateLevel .Stats.Accuracy) "advanced" }}🎯{{ end }}
+                {{ if eq (EstimateLevel .Stats.Accuracy) "expert" }}⭐{{ end }}
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px;">
+        <div>
+            <h3 style="color: #333; margin-bottom: 20px;">📊 Performance by Problem Type</h3>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: 600;">Addition</span>
+                        <span style="color: #667eea;">{{ .ProblemStats.Addition }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ .ProblemStats.Addition }}%"></div>
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: 600;">Subtraction</span>
+                        <span style="color: #667eea;">{{ .ProblemStats.Subtraction }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ .ProblemStats.Subtraction }}%"></div>
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: 600;">Multiplication</span>
+                        <span style="color: #667eea;">{{ .ProblemStats.Multiplication }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ .ProblemStats.Multiplication }}%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: 600;">Division</span>
+                        <span style="color: #667eea;">{{ .ProblemStats.Division }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ .ProblemStats.Division }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h3 style="color: #333; margin-bottom: 20px;">🎓 Recommended Next Steps</h3>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                {{ if lt .Stats.Accuracy 50 }}
+                    <p style="margin-bottom: 15px; color: #666;">
+                        <strong>Start with Easy Problems:</strong> Master the fundamentals with addition and subtraction problems. Build your confidence before moving to harder topics.
+                    </p>
+                {{ else if lt .Stats.Accuracy 70 }}
+                    <p style="margin-bottom: 15px; color: #666;">
+                        <strong>Try Medium Difficulty:</strong> You're doing great! It's time to challenge yourself with multiplication and division problems.
+                    </p>
+                {{ else if lt .Stats.Accuracy 85 }}
+                    <p style="margin-bottom: 15px; color: #666;">
+                        <strong>Explore Advanced Topics:</strong> Your accuracy is excellent! Try fractions and algebra problems to expand your skills.
+                    </p>
+                {{ else }}
+                    <p style="margin-bottom: 15px; color: #666;">
+                        <strong>You're a Math Expert!</strong> Consider helping others or taking on our hardest challenge problems to keep improving.
+                    </p>
+                {{ end }}
+
+                <button class="btn" onclick="startPractice()">Start Practice Session</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="recent-sessions">
+        <h3 style="color: #333; margin-bottom: 20px;">📝 Recent Sessions</h3>
+        {{ range .RecentSessions }}
+            <div class="session-card">
+                <div class="session-info">
+                    <h4>{{ .ProblemType }} - {{ .Difficulty }}</h4>
+                    <p>{{ .CorrectAnswers }} of {{ .TotalProblems }} correct • {{ printf "%.1f" .TimeSpent }}s total</p>
+                </div>
+                <div class="session-score">{{ printf "%.0f" .Score }}%</div>
+            </div>
+        {{ else }}
+            <p style="color: #999; text-align: center; padding: 20px;">No sessions yet. Start practicing!</p>
+        {{ end }}
+    </div>
+</div>
+
+<script>
+function startPractice() {
+    window.location.href = '/math/practice';
+}
+</script>

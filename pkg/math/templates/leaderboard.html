@@ -1,0 +1,67 @@
+<div class="content">
+    <h2>🏆 Math Leaderboard</h2>
+    <p style="color: #666; margin-bottom: 30px;">Top math performers ranked by accuracy and score</p>
+
+    <table class="leaderboard-table">
+        <thead>
+            <tr>
+                <th style="width: 80px;">Rank</th>
+                <th>User ID</th>
+                <th>Accuracy</th>
+                <th>Best Score</th>
+                <th>Sessions</th>
+                <th>Total Problems</th>
+                <th>Avg Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{ range $index, $stat := .Leaderboard }}
+                <tr>
+                    <td>
+                        {{ if eq $index 0 }}
+                            <span class="medal">🥇</span>
+                        {{ else if eq $index 1 }}
+                            <span class="medal">🥈</span>
+                        {{ else if eq $index 2 }}
+                            <span class="medal">🥉</span>
+                        {{ else }}
+                            <strong>#{{ add $index 1 }}</strong>
+                        {{ end }}
+                    </td>
+                    <td>User #{{ $stat.UserID }}</td>
+                    <td>
+                        <strong style="color: #667eea;">{{ printf "%.1f" $stat.Accuracy }}%</strong>
+                    </td>
+                    <td>{{ printf "%.0f" $stat.BestScore }}%</td>
+                    <td>{{ $stat.SessionsCompleted }}</td>
+                    <td>{{ $stat.TotalProblems }}</td>
+                    <td>{{ printf "%.1f" $stat.AverageTimePerProblem }}s</td>
+                </tr>
+            {{ else }}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
+                        No leaderboard data yet. Be the first to complete a session!
+                    </td>
+                </tr>
+            {{ end }}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+        <h3 style="color: #333; margin-bottom: 15px;">💡 Leaderboard Tips</h3>
+        <ul style="color: #666; margin-left: 20px; line-height: 1.8;">
+            <li><strong>Accuracy Matters Most:</strong> Rankings are primarily based on accuracy percentage. Focus on getting answers right!</li>
+            <li><strong>Consistency:</strong> Complete regular sessions to maintain your ranking. More sessions = more opportunities to improve.</li>
+            <li><strong>Challenge Yourself:</strong> Try harder difficulty levels to boost your best score and compete with top performers.</li>
+            <li><strong>Speed Development:</strong> As you improve, try solving problems faster. The leaderboard shows average time per problem.</li>
+        </ul>
+    </div>
+
+    <button class="btn" onclick="startPractice()" style="width: 100%; text-align: center; padding: 15px;">Start Practicing to Climb the Leaderboard</button>
+</div>
+
+<script>
+function startPractice() {
+    window.location.href = '/math/practice';
+}
+</script>
