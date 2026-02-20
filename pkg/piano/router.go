@@ -143,15 +143,42 @@ func (r *Router) GetSongs(w http.ResponseWriter, req *http.Request) {
 
 // CreateSong creates a new song
 func (r *Router) CreateSong(w http.ResponseWriter, req *http.Request) {
-	var song Song
-	if err := json.NewDecoder(req.Body).Decode(&song); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+	var reqData CreateSongRequest
+	if err := json.NewDecoder(req.Body).Decode(&reqData); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body - check JSON format")
 		return
 	}
 
-	id, err := r.service.repo.SaveSong(req.Context(), &song)
+	// Validate input
+	validator := NewValidator()
+	if err := reqData.Validate(validator); err != nil {
+		respondError(w, http.StatusBadRequest, "Validation error: "+err.Error())
+		return
+	}
+
+	// Create song from validated data
+	song := &Song{
+		Title:         reqData.Title,
+		Composer:      reqData.Composer,
+		Description:   reqData.Description,
+		Difficulty:    reqData.Difficulty,
+		BPM:           reqData.BPM,
+		TimeSignature: reqData.TimeSignature,
+		KeySignature:  reqData.KeySignature,
+		TotalNotes:    reqData.TotalNotes,
+	}
+
+	// Validate MIDI file if provided
+	if len(song.MIDIFile) > 0 {
+		if err := validator.ValidateMIDIFile(song.MIDIFile, 5*1024*1024); err != nil { // 5MB max
+			respondError(w, http.StatusBadRequest, "MIDI validation error: "+err.Error())
+			return
+		}
+	}
+
+	id, err := r.service.repo.SaveSong(req.Context(), song)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Failed to save song: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "Failed to save song: "+err.Error())
 		return
 	}
 
@@ -265,24 +292,34 @@ func (r *Router) GetUserLessons(w http.ResponseWriter, req *http.Request) {
 
 // SavePracticeSession saves a practice session with MIDI recording
 func (r *Router) SavePracticeSession(w http.ResponseWriter, req *http.Request) {
-	var reqData struct {
-		UserID       uint    `json:"user_id"`
-		SongID       uint    `json:"song_id"`
-		RecordedBPM  float64 `json:"recorded_bpm"`
-		Duration     float64 `json:"duration"`
-		NotesCorrect int     `json:"notes_correct"`
-		NotesTotal   int     `json:"notes_total"`
-	}
+	var reqData CreatePracticeRequest
 
 	if err := json.NewDecoder(req.Body).Decode(&reqData); err != nil {
-		respondError(w, http.StatusBadRequest, "Invalid request body")
+		respondError(w, http.StatusBadRequest, "Invalid request body - check JSON format")
 		return
 	}
 
-	session, err := r.service.ProcessLesson(req.Context(), reqData.UserID, reqData.SongID,
+	// Get authenticated user ID from session
+	userID := GetUserIDFromRequest(req)
+	if userID == 0 {
+		respondError(w, http.StatusUnauthorized, "User authentication required")
+		return
+	}
+
+	// Update request data with authenticated user ID
+	reqData.UserID = int(userID)
+
+	// Validate input
+	validator := NewValidator()
+	if err := reqData.Validate(validator); err != nil {
+		respondError(w, http.StatusBadRequest, "Validation error: "+err.Error())
+		return
+	}
+
+	session, err := r.service.ProcessLesson(req.Context(), uint(userID), reqData.SongID,
 		reqData.RecordedBPM, reqData.Duration, reqData.NotesCorrect, reqData.NotesTotal)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "Failed to save session: "+err.Error())
+		respondError(w, http.StatusInternalServerError, "Failed to save session: "+err.Error())
 		return
 	}
 
