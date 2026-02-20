@@ -12,18 +12,21 @@ import (
 
 // Router handles dashboard routes and API endpoints
 type Router struct {
-	router  *chi.Mux
-	service *Service
+	router               *chi.Mux
+	service              *Service
+	leaderboardService   *LeaderboardService
 }
 
 // NewRouter creates and configures the dashboard router
 func NewRouter(db *sql.DB) *Router {
 	// Create service with unified repository
 	service := NewService(nil)
+	leaderboardService := NewLeaderboardService(service)
 
 	r := &Router{
-		router:  chi.NewRouter(),
-		service: service,
+		router:             chi.NewRouter(),
+		service:            service,
+		leaderboardService: leaderboardService,
 	}
 
 	// Setup middleware
@@ -53,6 +56,8 @@ func (r *Router) setupRoutes() {
 		apiRouter.Route("/leaderboard", func(lbRouter chi.Router) {
 			lbRouter.Get("/{category}", r.getLeaderboard)
 			lbRouter.Get("/", r.listLeaderboards)
+			lbRouter.Get("/stats/{category}", r.getLeaderboardStats)
+			lbRouter.Get("/{category}/user/{userID}", r.getUserRank)
 		})
 		apiRouter.Get("/trends/{userID}", r.getTrends)
 		apiRouter.Get("/overview/{userID}", r.getDashboardOverview)
@@ -403,7 +408,7 @@ func (r *Router) getLeaderboard(w http.ResponseWriter, req *http.Request) {
 
 	if !r.service.ValidateCategory(category) {
 		respondJSON(w, http.StatusBadRequest, map[string]interface{}{
-			"error":              "invalid category",
+			"error":                   "invalid category",
 			"available_categories": r.service.GetAvailableCategories(),
 		})
 		return
@@ -419,7 +424,7 @@ func (r *Router) getLeaderboard(w http.ResponseWriter, req *http.Request) {
 	}
 
 	ctx := req.Context()
-	leaderboard, err := r.service.GetLeaderboard(ctx, category, limit)
+	leaderboard, err := r.leaderboardService.GetLeaderboardByCategory(ctx, category, limit)
 	if err != nil {
 		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -489,6 +494,73 @@ func (r *Router) getRecommendations(w http.ResponseWriter, req *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, recommendations)
+}
+
+// getLeaderboardStats returns statistics about a leaderboard
+func (r *Router) getLeaderboardStats(w http.ResponseWriter, req *http.Request) {
+	category := chi.URLParam(req, "category")
+
+	if !r.service.ValidateCategory(category) {
+		respondJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"error":                "invalid category",
+			"available_categories": r.service.GetAvailableCategories(),
+		})
+		return
+	}
+
+	// Get limit from query parameter
+	limitStr := req.URL.Query().Get("limit")
+	limit := 100
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	ctx := req.Context()
+	leaderboard, err := r.leaderboardService.GetLeaderboardByCategory(ctx, category, limit)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	stats := r.leaderboardService.GetLeaderboardStats(leaderboard)
+	respondJSON(w, http.StatusOK, stats)
+}
+
+// getUserRank returns a user's rank in a specific category
+func (r *Router) getUserRank(w http.ResponseWriter, req *http.Request) {
+	userID, err := strconv.ParseUint(chi.URLParam(req, "userID"), 10, 32)
+	if err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid user ID"})
+		return
+	}
+
+	category := chi.URLParam(req, "category")
+	if !r.service.ValidateCategory(category) {
+		respondJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"error":                "invalid category",
+			"available_categories": r.service.GetAvailableCategories(),
+		})
+		return
+	}
+
+	ctx := req.Context()
+	rank, err := r.leaderboardService.GetUserRank(ctx, uint(userID), category)
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]interface{}{
+			"error":  "user not found in leaderboard",
+			"userID": userID,
+			"category": category,
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"userID":   userID,
+		"category": category,
+		"rank":     rank,
+	})
 }
 
 // Helper function to respond with JSON
