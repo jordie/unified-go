@@ -25,8 +25,12 @@ func NewRouter(db *sql.DB) *Router {
 func (r *Router) Routes() chi.Router {
 	router := chi.NewRouter()
 
-	// Index page
+	// UI Routes - HTML pages
 	router.Get("/", IndexHandler)
+	router.Get("/songs", r.SongsHandler)
+	router.Get("/practice/{id}", r.PracticeHandler)
+	router.Get("/dashboard", r.DashboardHandler)
+	router.Get("/leaderboard", r.LeaderboardHandler)
 
 	// Song operations
 	router.Get("/api/songs", r.GetSongs)
