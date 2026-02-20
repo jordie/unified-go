@@ -10,7 +10,7 @@ import (
 )
 
 // setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *sql.DB {
+func setupTestDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
@@ -299,20 +299,19 @@ func TestGetUserProgress(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
-		lesson := &PianoLesson{
+		// Create a valid MIDI header for testing
+		midi := []byte{0x4D, 0x54, 0x68, 0x64, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01, 0x00, 0x60}
+
+		session := &PracticeSession{
 			UserID:        1,
 			SongID:        1,
 			Duration:      300.0,
-			NotesCorrect:  90,
+			NotesHit:      90,
 			NotesTotal:    100,
-			Accuracy:      90.0,
-			TempoAccuracy: 85.0,
-			Score:         85.0 + float64(i),
-			Completed:     true,
-			StartTime:     time.Now(),
-			EndTime:       time.Now(),
+			TempoAverage:  120.0,
+			RecordingMIDI: midi,
 		}
-		repo.SaveLesson(ctx, lesson)
+		repo.SavePracticeSession(ctx, session)
 	}
 
 	progress, err := repo.GetUserProgress(ctx, 1)

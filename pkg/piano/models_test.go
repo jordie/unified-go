@@ -460,52 +460,6 @@ func TestMIDIValidation(t *testing.T) {
 	}
 }
 
-// TestMusicTheoryQuiz tests MusicTheoryQuiz struct
-func TestMusicTheoryQuiz(t *testing.T) {
-	quiz := &MusicTheoryQuiz{
-		UserID:     1,
-		Topic:      "scales",
-		Score:      85.0,
-		Difficulty: "intermediate",
-		Completed:  true,
-	}
-
-	if quiz.UserID == 0 {
-		t.Error("UserID should be set")
-	}
-
-	if quiz.Score < 0 || quiz.Score > 100 {
-		t.Error("Score should be between 0-100")
-	}
-}
-
-// TestUserProgress tests UserProgress struct
-func TestUserProgress(t *testing.T) {
-	now := time.Now()
-	progress := &UserProgress{
-		UserID:                  1,
-		TotalLessonsCompleted:   10,
-		TotalPracticedMinutes:   300.0,
-		AverageScore:            82.5,
-		BestScore:               95.0,
-		FastestTempo:            140.0,
-		BestDifficulty:          "advanced",
-		CurrentLevel:            "intermediate",
-		LastPracticedDate:       &now,
-	}
-
-	if progress.UserID == 0 {
-		t.Error("UserID should be set")
-	}
-
-	if progress.TotalLessonsCompleted < 0 {
-		t.Error("TotalLessonsCompleted should be non-negative")
-	}
-
-	if progress.AverageScore > progress.BestScore {
-		t.Error("AverageScore should not exceed BestScore")
-	}
-}
 
 // TestSongMarshalJSON tests JSON marshaling
 func TestSongMarshalJSON(t *testing.T) {

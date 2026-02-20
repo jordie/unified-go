@@ -238,13 +238,13 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID uint) (*UserPro
 		UserID: userID,
 	}
 
-	// Count completed lessons
-	var completedCount int
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM piano_lessons WHERE user_id = ? AND completed = 1`, userID).Scan(&completedCount)
-	progress.TotalLessonsCompleted = completedCount
+	// Count completed practice sessions
+	var sessionCount int
+	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM practice_sessions WHERE user_id = ?`, userID).Scan(&sessionCount)
+	progress.TotalLessonsCompleted = sessionCount
 
-	// Get lessons for aggregation
-	stmt := `SELECT id, user_id, song_id, duration, score, tempo_accuracy FROM piano_lessons WHERE user_id = ? AND completed = 1 ORDER BY created_at DESC`
+	// Get sessions for aggregation
+	stmt := `SELECT duration, notes_hit, notes_total, tempo_average FROM practice_sessions WHERE user_id = ? ORDER BY created_at DESC`
 
 	rows, err := r.db.QueryContext(ctx, stmt, userID)
 	if err != nil {
@@ -253,19 +253,26 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID uint) (*UserPro
 	defer rows.Close()
 
 	var totalScore, maxScore, maxTempo, totalDuration float64
-	lessonCount := 0
+	sessionCount = 0
 
 	for rows.Next() {
-		var id, songID uint
-		var duration, score, tempoAccuracy float64
-		if err := rows.Scan(&id, &userID, &songID, &duration, &score, &tempoAccuracy); err != nil {
-			return nil, fmt.Errorf("failed to scan lesson: %w", err)
+		var duration, tempoAverage float64
+		var notesHit, notesTotal int
+		if err := rows.Scan(&duration, &notesHit, &notesTotal, &tempoAverage); err != nil {
+			return nil, fmt.Errorf("failed to scan session: %w", err)
 		}
 
-		lessonCount++
-		totalScore += score
+		sessionCount++
 		totalDuration += duration
 
+		// Calculate accuracy and tempo accuracy for this session
+		accuracy := CalculateAccuracy(notesHit, notesTotal)
+		tempoAccuracy := CalculateTempoAccuracy(tempoAverage, 120.0) // Default target tempo
+
+		// Calculate composite score
+		score := CalculateCompositeScore(accuracy, tempoAccuracy, 0) // No theory score in practice session
+
+		totalScore += score
 		if score > maxScore {
 			maxScore = score
 		}
@@ -274,8 +281,8 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID uint) (*UserPro
 		}
 	}
 
-	if lessonCount > 0 {
-		progress.AverageScore = totalScore / float64(lessonCount)
+	if sessionCount > 0 {
+		progress.AverageScore = totalScore / float64(sessionCount)
 		progress.TotalPracticedMinutes = totalDuration / 60.0
 	}
 
@@ -285,7 +292,7 @@ func (r *Repository) GetUserProgress(ctx context.Context, userID uint) (*UserPro
 
 	// Get last practiced date
 	var lastTime *sql.NullTime
-	r.db.QueryRowContext(ctx, `SELECT MAX(created_at) FROM piano_lessons WHERE user_id = ? AND completed = 1`, userID).Scan(&lastTime)
+	r.db.QueryRowContext(ctx, `SELECT MAX(created_at) FROM practice_sessions WHERE user_id = ?`, userID).Scan(&lastTime)
 	if lastTime != nil && lastTime.Valid {
 		progress.LastPracticedDate = &lastTime.Time
 	}
