@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Achievements</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card.medal {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        }
+        
+        .stat-card.gold .stat-icon {
+            font-size: 2.5em;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 20px;
+        }
+        
+        .achievement {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .achievement:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .achievement.locked {
+            opacity: 0.5;
+            background: #f0f0f0;
+        }
+        
+        .achievement.locked::after {
+            content: '🔒';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+        }
+        
+        .achievement-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .achievement-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+        
+        .achievement-description {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .achievement-progress {
+            font-size: 0.75em;
+            color: #999;
+        }
+        
+        .category-title {
+            color: white;
+            font-size: 1.5em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            border-left: 4px solid white;
+            padding-left: 15px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+        }
+        
+        @media (max-width: 768px) {
+            .achievements-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏆 Achievements</h1>
+            <p>Your racing accomplishments and milestones</p>
+        </div>
+        
+        <!-- Stats Summary -->
+        <div class="stats-summary">
+            <div class="stat-card">
+                <div class="stat-label">Total Races</div>
+                <div class="stat-value">42</div>
+            </div>
+            <div class="stat-card medal">
+                <div class="stat-label">1st Place</div>
+                <div class="stat-value">18</div>
+            </div>
+            <div class="stat-card medal">
+                <div class="stat-label">2nd Place</div>
+                <div class="stat-value">12</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total XP</div>
+                <div class="stat-value">1250</div>
+            </div>
+        </div>
+        
+        <!-- Speed Achievements -->
+        <div class="category-title">⚡ Speed Achievements</div>
+        <div class="achievements-grid">
+            <div class="achievement unlocked">
+                <div class="achievement-icon">🐢</div>
+                <div class="achievement-name">Turtle</div>
+                <div class="achievement-description">Reach 20 WPM</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement unlocked">
+                <div class="achievement-icon">🐇</div>
+                <div class="achievement-name">Rabbit</div>
+                <div class="achievement-description">Reach 50 WPM</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement unlocked">
+                <div class="achievement-icon">🚀</div>
+                <div class="achievement-name">Rocket</div>
+                <div class="achievement-description">Reach 100 WPM</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement">
+                <div class="achievement-icon">⚡</div>
+                <div class="achievement-name">Lightning</div>
+                <div class="achievement-description">Reach 150 WPM</div>
+                <div class="achievement-progress">95 WPM until unlock</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 63%"></div></div>
+            </div>
+        </div>
+        
+        <!-- Racing Achievements -->
+        <div class="category-title">🏁 Racing Achievements</div>
+        <div class="achievements-grid">
+            <div class="achievement unlocked">
+                <div class="achievement-icon">🥇</div>
+                <div class="achievement-name">First Victory</div>
+                <div class="achievement-description">Win your first race</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement unlocked">
+                <div class="achievement-icon">🎪</div>
+                <div class="achievement-name">Podium Finish</div>
+                <div class="achievement-description">Place top 3 in 10 races</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement unlocked">
+                <div class="achievement-icon">👑</div>
+                <div class="achievement-name">Champion</div>
+                <div class="achievement-description">Win 15 races</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement">
+                <div class="achievement-icon">🌟</div>
+                <div class="achievement-name">Legend</div>
+                <div class="achievement-description">Win 50 races</div>
+                <div class="achievement-progress">18/50 wins</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 36%"></div></div>
+            </div>
+        </div>
+        
+        <!-- Accuracy Achievements -->
+        <div class="category-title">🎯 Accuracy Achievements</div>
+        <div class="achievements-grid">
+            <div class="achievement unlocked">
+                <div class="achievement-icon">✓</div>
+                <div class="achievement-name">Accurate</div>
+                <div class="achievement-description">Achieve 90% accuracy</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement unlocked">
+                <div class="achievement-icon">✓✓</div>
+                <div class="achievement-name">Precise</div>
+                <div class="achievement-description">Achieve 95% accuracy</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement">
+                <div class="achievement-icon">✓✓✓</div>
+                <div class="achievement-name">Perfect</div>
+                <div class="achievement-description">Achieve 100% accuracy</div>
+                <div class="achievement-progress">98.5% best</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 98.5%"></div></div>
+            </div>
+        </div>
+        
+        <!-- Collection Achievements -->
+        <div class="category-title">🏎️ Collection Achievements</div>
+        <div class="achievements-grid">
+            <div class="achievement unlocked">
+                <div class="achievement-icon">🚗</div>
+                <div class="achievement-name">Starter</div>
+                <div class="achievement-description">Unlock 1 car</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement unlocked">
+                <div class="achievement-icon">🏎️</div>
+                <div class="achievement-name">Collector</div>
+                <div class="achievement-description">Unlock 3 cars</div>
+                <div class="achievement-progress">Unlocked</div>
+            </div>
+            <div class="achievement">
+                <div class="achievement-icon">👑</div>
+                <div class="achievement-name">Collector's Complete</div>
+                <div class="achievement-description">Unlock all 5 cars</div>
+                <div class="achievement-progress">3/5 cars</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 60%"></div></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
