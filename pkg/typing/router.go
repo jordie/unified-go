@@ -47,6 +47,17 @@ func (r *Router) Routes() chi.Router {
 	r.router.Get("/api/typing/lessons", r.GetLessons)
 	r.router.Get("/api/typing/lessons/{lessonId}", r.GetLesson)
 
+	// Racing endpoints
+	r.router.Post("/api/racing/start", r.StartRace)
+	r.router.Post("/api/racing/finish", r.FinishRace)
+	r.router.Get("/api/users/{userId}/racing/stats", r.GetRacingStats)
+	r.router.Get("/api/racing/leaderboard", r.GetRacingLeaderboard)
+	r.router.Get("/api/users/{userId}/racing/history", r.GetRaceHistory)
+	r.router.Get("/api/users/{userId}/racing/cars", r.GetUnlockedCars)
+	r.router.Get("/api/users/{userId}/racing/next-car", r.GetNextCarUnlock)
+	r.router.Get("/api/racing/ai-opponent", r.GenerateAIOpponentHandler)
+	r.router.Get("/api/users/{userId}/racing/level", r.GetRaceLevel)
+
 	return r.router
 }
 
@@ -255,6 +266,210 @@ func (r *Router) GetLesson(w http.ResponseWriter, req *http.Request) {
 	} else {
 		respondError(w, http.StatusNotFound, "Lesson not found")
 	}
+}
+
+// StartRace initiates a new racing session
+func (r *Router) StartRace(w http.ResponseWriter, req *http.Request) {
+	var raceStart struct {
+		UserID     uint   `json:"user_id"`
+		Difficulty string `json:"difficulty"`
+	}
+
+	if err := json.NewDecoder(req.Body).Decode(&raceStart); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if raceStart.UserID == 0 {
+		respondError(w, http.StatusBadRequest, "user_id is required")
+		return
+	}
+
+	// Generate AI opponent
+	aiOpponent := r.service.GenerateAIOpponent(raceStart.Difficulty)
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"ai_opponent": aiOpponent,
+		"text_sample": r.service.GetSelectedText("common_words"),
+	})
+}
+
+// FinishRace completes a racing session and saves results
+func (r *Router) FinishRace(w http.ResponseWriter, req *http.Request) {
+	var raceFinish struct {
+		UserID   uint    `json:"user_id"`
+		WPM      float64 `json:"wpm"`
+		Accuracy float64 `json:"accuracy"`
+		RaceTime float64 `json:"race_time"`
+		Placement int    `json:"placement"`
+	}
+
+	if err := json.NewDecoder(req.Body).Decode(&raceFinish); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	race, err := r.service.ProcessRaceResult(req.Context(), raceFinish.UserID, raceFinish.WPM, raceFinish.Accuracy, raceFinish.RaceTime, raceFinish.Placement)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, race)
+}
+
+// GetRacingStats retrieves user's racing statistics
+func (r *Router) GetRacingStats(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	stats, err := r.service.GetRacingStats(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get racing stats")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, stats)
+}
+
+// GetRacingLeaderboard retrieves racing leaderboard
+func (r *Router) GetRacingLeaderboard(w http.ResponseWriter, req *http.Request) {
+	metric := req.URL.Query().Get("metric")
+	if metric == "" {
+		metric = "total_xp"
+	}
+
+	limit := 10
+	if limitStr := req.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		}
+	}
+
+	leaderboard, err := r.service.GetRacingLeaderboard(req.Context(), metric, limit)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get racing leaderboard")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"leaderboard": leaderboard,
+		"metric":      metric,
+		"limit":       limit,
+	})
+}
+
+// GetRaceHistory retrieves user's race history
+func (r *Router) GetRaceHistory(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	limit := 20
+	offset := 0
+
+	if limitStr := req.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	if offsetStr := req.URL.Query().Get("offset"); offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+
+	races, err := r.service.GetRaceHistory(req.Context(), uint(userID), limit, offset)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get race history")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"races":  races,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+// GetUnlockedCars retrieves unlocked cars for user
+func (r *Router) GetUnlockedCars(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	cars, err := r.service.GetUnlockedCars(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get cars")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"cars": cars,
+	})
+}
+
+// GetNextCarUnlock retrieves next car unlock information
+func (r *Router) GetNextCarUnlock(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	nextCar, xpNeeded, err := r.service.GetNextCarUnlock(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get next car")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"next_car":  nextCar,
+		"xp_needed": xpNeeded,
+	})
+}
+
+// GenerateAIOpponentHandler generates an AI opponent
+func (r *Router) GenerateAIOpponentHandler(w http.ResponseWriter, req *http.Request) {
+	difficulty := req.URL.Query().Get("difficulty")
+	if difficulty == "" {
+		difficulty = "medium"
+	}
+
+	opponent := r.service.GenerateAIOpponent(difficulty)
+	respondJSON(w, http.StatusOK, opponent)
+}
+
+// GetRaceLevel retrieves user's racing skill level
+func (r *Router) GetRaceLevel(w http.ResponseWriter, req *http.Request) {
+	userIdStr := chi.URLParam(req, "userId")
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	level, err := r.service.CalculateRaceLevel(req.Context(), uint(userID))
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to get race level")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"level": level,
+	})
 }
 
 // Helper functions
