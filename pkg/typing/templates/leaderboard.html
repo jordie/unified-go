@@ -1,0 +1,61 @@
+{{define "content"}}
+<div class="content">
+    <h1>🏆 Typing Leaderboard</h1>
+
+    {{if .Entries}}
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <th style="padding: 1rem; text-align: center;">Rank</th>
+                    <th style="padding: 1rem; text-align: left;">User</th>
+                    <th style="padding: 1rem; text-align: right;">Avg WPM</th>
+                    <th style="padding: 1rem; text-align: right;">Best WPM</th>
+                    <th style="padding: 1rem; text-align: right;">Accuracy</th>
+                    <th style="padding: 1rem; text-align: right;">Tests</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $index, $entry := .Entries}}
+                    <tr style="border-bottom: 1px solid #eee; {{if eq (mod $index 2) 0}}background: #f9f9f9;{{end}}">
+                        <td style="padding: 1rem; text-align: center; font-weight: bold;">
+                            {{if eq $index 0}}🥇{{else if eq $index 1}}🥈{{else if eq $index 2}}🥉{{else}}#{{add $index 1}}{{end}}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <strong>User {{$entry.UserID}}</strong>
+                        </td>
+                        <td style="padding: 1rem; text-align: right;">{{printf "%.1f" $entry.AverageWPM}}</td>
+                        <td style="padding: 1rem; text-align: right;">{{printf "%.1f" $entry.BestWPM}}</td>
+                        <td style="padding: 1rem; text-align: right;">{{printf "%.1f" $entry.AverageAccuracy}}%</td>
+                        <td style="padding: 1rem; text-align: right;">{{$entry.TotalTests}}</td>
+                    </tr>
+                {{end}}
+            </tbody>
+        </table>
+    {{else}}
+        <div class="alert alert-info">
+            No leaderboard data available yet. Start typing to appear on the leaderboard!
+        </div>
+    {{end}}
+
+    <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+        <h2>🎯 How to Climb the Leaderboard</h2>
+        <ul style="margin: 1rem 0; margin-left: 2rem;">
+            <li>Take more typing tests to establish your average WPM</li>
+            <li>Improve your accuracy - accuracy helps your overall ranking</li>
+            <li>Set a personal goal to beat your best WPM</li>
+            <li>Practice different typing modes and difficulties</li>
+            <li>Consistency is key - regular practice beats sporadic attempts</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    function mod(n, m) {
+        return n % m;
+    }
+
+    function add(n, m) {
+        return n + m;
+    }
+</script>
+{{end}}

@@ -1,0 +1,85 @@
+{{define "content"}}
+<div class="content">
+    <h1>📊 Your Typing Dashboard</h1>
+
+    {{if .Stats}}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="value">{{.Stats.TotalTests}}</div>
+                <div class="label">Total Tests</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.1f" .Stats.AverageWPM}}</div>
+                <div class="label">Average WPM</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.1f" .Stats.BestWPM}}</div>
+                <div class="label">Best WPM</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.1f" .Stats.AverageAccuracy}}%</div>
+                <div class="label">Average Accuracy</div>
+            </div>
+        </div>
+
+        <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+            <h2>📈 Typing Level</h2>
+            <p><strong>Current Level:</strong> <span style="text-transform: capitalize;">{{.SkillLevel}}</span></p>
+            <p><strong>Total Time Typed:</strong> {{.Stats.TotalTimeTyped}} hours</p>
+            <p><strong>Last Updated:</strong> {{.Stats.LastUpdated.Format "Jan 2, 2006"}}</p>
+
+            <div class="progress-bar" style="margin-top: 1rem;">
+                <div class="progress-fill" style="width: {{.Stats.AverageWPM}}%;">
+                    {{printf "%.0f" .Stats.AverageWPM}} WPM
+                </div>
+            </div>
+        </div>
+
+        <h2>📋 Recent Tests</h2>
+        {{if .Tests}}
+            <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Date</th>
+                        <th style="padding: 0.75rem; text-align: right; border-bottom: 2px solid #ddd;">WPM</th>
+                        <th style="padding: 0.75rem; text-align: right; border-bottom: 2px solid #ddd;">Accuracy</th>
+                        <th style="padding: 0.75rem; text-align: right; border-bottom: 2px solid #ddd;">Errors</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Mode</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Tests}}
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 0.75rem;">{{.TestTime.Format "Jan 2, 15:04"}}</td>
+                            <td style="padding: 0.75rem; text-align: right;">{{printf "%.1f" .WPM}}</td>
+                            <td style="padding: 0.75rem; text-align: right;">{{printf "%.1f" .Accuracy}}%</td>
+                            <td style="padding: 0.75rem; text-align: right;">{{.Errors}}</td>
+                            <td style="padding: 0.75rem;">{{.TestMode}}</td>
+                        </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        {{else}}
+            <div class="alert alert-info">
+                No typing tests yet. <a href="/typing/test">Start typing</a> to track your progress!
+            </div>
+        {{end}}
+
+        <h2>🎯 Tips to Improve</h2>
+        <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin: 1rem 0;">
+            <ul style="margin: 1rem 0; margin-left: 2rem;">
+                <li>Practice consistently - aim for daily typing sessions</li>
+                <li>Focus on accuracy first, speed will follow naturally</li>
+                <li>Use proper finger placement on home row keys</li>
+                <li>Eliminate distractions and type in a quiet environment</li>
+                <li>Gradually increase difficulty as you improve</li>
+            </ul>
+        </div>
+
+    {{else}}
+        <div class="alert alert-info">
+            No typing data yet. <a href="/typing/test">Start your first typing test</a> to begin tracking your progress!
+        </div>
+    {{end}}
+</div>
+{{end}}

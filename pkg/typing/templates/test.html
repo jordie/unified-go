@@ -1,0 +1,141 @@
+{{define "content"}}
+<div class="content">
+    <h1>⌨️ Typing Speed Test</h1>
+
+    <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+        <h2>Ready to Test Your Typing Speed?</h2>
+        <p style="margin: 1rem 0;">Type the text below as accurately and quickly as possible. Your WPM and accuracy will be calculated automatically.</p>
+
+        <div style="background: white; padding: 1.5rem; border-radius: 5px; margin: 1.5rem 0; border: 2px solid #667eea; font-family: monospace; font-size: 1.1rem; line-height: 1.8;">
+            The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly.
+        </div>
+
+        <form onsubmit="submitTest(event)">
+            <div class="form-group">
+                <label for="typed-text">Type the text above here:</label>
+                <textarea id="typed-text" name="typed-text" placeholder="Click here and start typing..." style="height: 120px; font-family: monospace;" required></textarea>
+            </div>
+
+            <div class="stats-grid" style="margin: 1.5rem 0; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                <div class="stat-box">
+                    <div class="value" id="wpm-display">0</div>
+                    <div class="label">WPM</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="accuracy-display">100%</div>
+                    <div class="label">Accuracy</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="errors-display">0</div>
+                    <div class="label">Errors</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="time-display">0s</div>
+                    <div class="label">Time</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin: 1.5rem 0;">
+                <button type="button" class="btn" onclick="startTest()">🚀 Start Test</button>
+                <button type="button" class="btn btn-secondary" onclick="resetTest()">↻ Reset</button>
+                <button type="submit" class="btn" style="margin-left: auto;">✓ Submit Test</button>
+            </div>
+        </form>
+
+        <div class="progress-bar" style="margin-top: 1rem;">
+            <div class="progress-fill" id="progress-bar" style="width: 0%;">
+                <span id="progress-text">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <h2>📚 Typing Tips</h2>
+    <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px;">
+        <ul style="margin: 1rem 0; margin-left: 2rem;">
+            <li>Sit up straight and keep your feet flat on the floor</li>
+            <li>Keep your elbows at a 90-degree angle</li>
+            <li>Position your hands so your wrists are slightly elevated</li>
+            <li>Use the home row (ASDF JKL;) as your base position</li>
+            <li>Don't look at the keyboard - train your muscle memory</li>
+            <li>Focus on accuracy first, speed will come naturally</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    let testStartTime = null;
+    let isTestActive = false;
+    const targetText = "The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! The five boxing wizards jump quickly.";
+
+    function startTest() {
+        const typedArea = document.getElementById('typed-text');
+        typedArea.value = '';
+        typedArea.focus();
+        testStartTime = Date.now();
+        isTestActive = true;
+        document.getElementById('progress-bar').style.width = '0%';
+        updateStats();
+    }
+
+    function resetTest() {
+        document.getElementById('typed-text').value = '';
+        testStartTime = null;
+        isTestActive = false;
+        document.getElementById('wpm-display').textContent = '0';
+        document.getElementById('accuracy-display').textContent = '100%';
+        document.getElementById('errors-display').textContent = '0';
+        document.getElementById('time-display').textContent = '0s';
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-text').textContent = '0%';
+    }
+
+    function updateStats() {
+        if (!isTestActive) return;
+
+        const typedText = document.getElementById('typed-text').value;
+        const elapsedSeconds = (Date.now() - testStartTime) / 1000;
+
+        // Calculate WPM
+        const words = typedText.trim().split(/\s+/).length;
+        const wpm = Math.round((words / elapsedSeconds) * 60);
+
+        // Calculate accuracy
+        let errors = 0;
+        for (let i = 0; i < Math.min(typedText.length, targetText.length); i++) {
+            if (typedText[i] !== targetText[i]) errors++;
+        }
+        errors += Math.abs(typedText.length - targetText.length);
+        const accuracy = Math.max(0, Math.round((1 - (errors / targetText.length)) * 100));
+
+        // Calculate progress
+        const progress = Math.round((typedText.length / targetText.length) * 100);
+
+        // Update display
+        document.getElementById('wpm-display').textContent = wpm;
+        document.getElementById('accuracy-display').textContent = accuracy + '%';
+        document.getElementById('errors-display').textContent = errors;
+        document.getElementById('time-display').textContent = Math.round(elapsedSeconds) + 's';
+        document.getElementById('progress-bar').style.width = progress + '%';
+        document.getElementById('progress-text').textContent = progress + '%';
+
+        setTimeout(updateStats, 100);
+    }
+
+    function submitTest(event) {
+        event.preventDefault();
+        const typedText = document.getElementById('typed-text').value;
+        const duration = (Date.now() - testStartTime) / 1000;
+
+        let errors = 0;
+        for (let i = 0; i < Math.min(typedText.length, targetText.length); i++) {
+            if (typedText[i] !== targetText[i]) errors++;
+        }
+
+        alert('Test submitted! WPM: ' + document.getElementById('wpm-display').textContent +
+              ', Accuracy: ' + document.getElementById('accuracy-display').textContent);
+        resetTest();
+    }
+
+    document.getElementById('typed-text').addEventListener('input', updateStats);
+</script>
+{{end}}
