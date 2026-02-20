@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test History - TypeMaster</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: white;
+            background: #667eea;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        nav a:hover, nav a.active {
+            background: #764ba2;
+        }
+
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        .date {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .wpm-value {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .accuracy-value {
+            color: #33a;
+            font-weight: 600;
+        }
+
+        .accuracy-value.good {
+            color: #3a3;
+        }
+
+        .accuracy-value.poor {
+            color: #a33;
+        }
+
+        .accuracy-bar {
+            background: #eee;
+            border-radius: 4px;
+            height: 6px;
+            width: 100%;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .accuracy-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .pagination button, .pagination span {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .pagination button:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination .active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #764ba2;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-label {
+            color: #666;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .summary-value {
+            color: #667eea;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px;
+        }
+
+        @media (max-width: 600px) {
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+
+            .wpm-value, .accuracy-value {
+                font-size: 14px;
+            }
+
+            .pagination {
+                margin: 20px 0;
+            }
+
+            .stats-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Test History</h1>
+            <p style="color: #666; margin: 10px 0;">View all your typing tests</p>
+            <nav>
+                <a href="/typing/">Home</a>
+                <a href="/typing/api/stats">Stats</a>
+                <a href="/typing/api/leaderboard">Leaderboard</a>
+                <a href="/typing/api/history" class="active">History</a>
+            </nav>
+        </header>
+
+        <div class="content">
+            <div class="stats-summary" id="summary">
+                <div class="summary-item">
+                    <div class="summary-label">Total Tests</div>
+                    <div class="summary-value" id="summary-tests">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Avg WPM</div>
+                    <div class="summary-value" id="summary-wpm">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Best WPM</div>
+                    <div class="summary-value" id="summary-best">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Avg Accuracy</div>
+                    <div class="summary-value" id="summary-accuracy">-</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button onclick="loadHistory(10, 0)">Show 10</button>
+                <button onclick="loadHistory(20, 0)">Show 20</button>
+                <button onclick="loadHistory(50, 0)">Show 50</button>
+            </div>
+
+            <div id="history-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>WPM</th>
+                            <th>Accuracy</th>
+                            <th>Duration</th>
+                            <th>Mode</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
+                                Loading...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 TypeMaster. Track your progress!</p>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 0;
+        let currentLimit = 20;
+        let totalTests = 0;
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function getAccuracyClass(accuracy) {
+            if (accuracy >= 95) return 'accuracy-value good';
+            if (accuracy >= 85) return 'accuracy-value';
+            return 'accuracy-value poor';
+        }
+
+        function loadHistory(limit, offset) {
+            currentLimit = limit;
+            currentPage = Math.floor(offset / limit);
+
+            fetch('/typing/api/history?limit=' + limit + '&offset=' + offset)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.data && data.data.history) {
+                        const history = data.data.history;
+                        const tbody = document.getElementById('history-body');
+
+                        if (history.length === 0) {
+                            tbody.innerHTML = `
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <p>No test history yet</p>
+                                            <p><a href="/typing/" style="color: #667eea; text-decoration: none;">Take your first test!</a></p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                            document.getElementById('pagination').innerHTML = '';
+                            return;
+                        }
+
+                        tbody.innerHTML = history.map(test => {
+                            const duration = (test.duration || test.time_taken || 0).toFixed(1);
+                            const accuracy = (test.accuracy || 0).toFixed(1);
+                            return `
+                                <tr>
+                                    <td class="date">${formatDate(test.created_at)}</td>
+                                    <td class="wpm-value">${(test.wpm || 0).toFixed(1)}</td>
+                                    <td class="${getAccuracyClass(accuracy)}">
+                                        <div>${accuracy}%</div>
+                                        <div class="accuracy-bar">
+                                            <div class="accuracy-bar-fill" style="width: ${accuracy}%"></div>
+                                        </div>
+                                    </td>
+                                    <td>${duration}s</td>
+                                    <td>${test.test_mode || 'standard'}</td>
+                                </tr>
+                            `;
+                        }).join('');
+
+                        // Update pagination
+                        const maxPage = Math.ceil(totalTests / limit);
+                        let paginationHtml = '';
+
+                        // Previous button
+                        if (currentPage > 0) {
+                            paginationHtml += '<button onclick="loadHistory(' + limit + ', ' + ((currentPage - 1) * limit) + ')">← Previous</button>';
+                        } else {
+                            paginationHtml += '<span class="disabled">← Previous</span>';
+                        }
+
+                        // Page numbers
+                        const startPage = Math.max(0, currentPage - 2);
+                        const endPage = Math.min(maxPage, currentPage + 3);
+                        for (let i = startPage; i < endPage; i++) {
+                            if (i === currentPage) {
+                                paginationHtml += '<span class="active">' + (i + 1) + '</span>';
+                            } else {
+                                paginationHtml += '<button onclick="loadHistory(' + limit + ', ' + (i * limit) + ')">' + (i + 1) + '</button>';
+                            }
+                        }
+
+                        // Next button
+                        if (currentPage < maxPage - 1) {
+                            paginationHtml += '<button onclick="loadHistory(' + limit + ', ' + ((currentPage + 1) * limit) + ')">Next →</button>';
+                        } else {
+                            paginationHtml += '<span class="disabled">Next →</span>';
+                        }
+
+                        document.getElementById('pagination').innerHTML = paginationHtml;
+                    } else {
+                        document.getElementById('history-body').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #c33;">Failed to load history</td></tr>';
+                    }
+                })
+                .catch(e => {
+                    console.error('Error:', e);
+                    document.getElementById('history-body').innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 40px; color: #c33;">Error loading history</td></tr>';
+                });
+        }
+
+        // Load stats summary and history on page load
+        window.addEventListener('load', function() {
+            // Load summary stats
+            fetch('/typing/api/stats')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        const stats = data.data;
+                        totalTests = stats.total_tests || 0;
+                        document.getElementById('summary-tests').textContent = totalTests;
+                        document.getElementById('summary-wpm').textContent = (stats.average_wpm || 0).toFixed(1);
+                        document.getElementById('summary-best').textContent = (stats.best_wpm || 0).toFixed(1);
+                        document.getElementById('summary-accuracy').textContent = (stats.average_accuracy || 0).toFixed(1) + '%';
+                    }
+                })
+                .catch(e => console.error('Failed to load stats:', e));
+
+            // Load history
+            loadHistory(20, 0);
+        });
+    </script>
+</body>
+</html>
