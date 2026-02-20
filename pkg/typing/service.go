@@ -308,7 +308,7 @@ func calculateTrend(ctx context.Context, repo *Repository, userID uint) map[stri
 
 	// Get first and last WPM from recent tests
 	firstWPM := tests[len(tests)-1].WPM // Oldest test
-	lastWPM := tests[0].WPM              // Most recent test
+	lastWPM := tests[0].WPM             // Most recent test
 
 	if firstWPM == 0 {
 		return map[string]interface{}{

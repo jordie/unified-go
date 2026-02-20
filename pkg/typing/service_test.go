@@ -24,11 +24,11 @@ func TestCalculateWPM(t *testing.T) {
 	_, service := setupServiceTestDB(t)
 
 	tests := []struct {
-		name            string
-		content         string
-		timeSpent       float64
-		expectedMinWPM  float64
-		expectedMaxWPM  float64
+		name           string
+		content        string
+		timeSpent      float64
+		expectedMinWPM float64
+		expectedMaxWPM float64
 	}{
 		{
 			name:           "typical typing test",
@@ -40,7 +40,7 @@ func TestCalculateWPM(t *testing.T) {
 		{
 			name:           "fast typing",
 			content:        "abcdefghijklmnopqrstuvwxyz", // 26 chars
-			timeSpent:      30,                            // 30 seconds
+			timeSpent:      30,                           // 30 seconds
 			expectedMinWPM: 10.0,
 			expectedMaxWPM: 11.0,
 		},
@@ -86,11 +86,11 @@ func TestCalculateAccuracy(t *testing.T) {
 	_, service := setupServiceTestDB(t)
 
 	tests := []struct {
-		name            string
-		typed           string
-		expected        string
-		expectedMinAcc  float64
-		expectedMaxAcc  float64
+		name           string
+		typed          string
+		expected       string
+		expectedMinAcc float64
+		expectedMaxAcc float64
 	}{
 		{
 			name:           "perfect match",

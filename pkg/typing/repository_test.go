@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/jgirmay/unified-go/internal/database"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // setupTestDB creates a temporary in-memory SQLite database for testing
@@ -111,11 +111,11 @@ func TestSaveResultInvalid(t *testing.T) {
 	repo := NewRepository(pool)
 
 	result := &TypingResult{
-		UserID:     0, // Invalid: missing user_id
-		Content:    "test",
-		TimeSpent:  120.0,
-		WPM:        60.5,
-		Accuracy:   95.5,
+		UserID:    0, // Invalid: missing user_id
+		Content:   "test",
+		TimeSpent: 120.0,
+		WPM:       60.5,
+		Accuracy:  95.5,
 	}
 
 	ctx := context.Background()

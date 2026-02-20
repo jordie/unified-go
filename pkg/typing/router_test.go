@@ -204,9 +204,9 @@ func TestLeaderboardHandlerWithLimitParam(t *testing.T) {
 	mux := router.RegisterRoutes()
 
 	tests := []struct {
-		name      string
-		limitStr  string
-		expectOK  bool
+		name     string
+		limitStr string
+		expectOK bool
 	}{
 		{"valid limit", "5", true},
 		{"max limit", "1000", true},
@@ -245,7 +245,7 @@ func TestHistoryHandlerPaginationParams(t *testing.T) {
 		{"with limit", "10", "", true},
 		{"with offset", "", "5", true},
 		{"both params", "10", "5", true},
-		{"invalid limit", "abc", "", true}, // Should use default
+		{"invalid limit", "abc", "", true},  // Should use default
 		{"invalid offset", "", "xyz", true}, // Should use default
 	}
 

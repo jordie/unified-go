@@ -9,42 +9,42 @@ import (
 
 // TypingTest represents a single typing test result
 type TypingTest struct {
-	ID        uint      `json:"id" db:"id"`
-	UserID    uint      `json:"user_id" db:"user_id"`
-	TestTime  time.Time `json:"test_time" db:"timestamp"`
-	WPM       float64   `json:"wpm" db:"wpm"`
-	RawWPM    float64   `json:"raw_wpm" db:"raw_wpm"`
-	Accuracy  float64   `json:"accuracy" db:"accuracy"`
-	Duration  float64   `json:"duration" db:"time_taken"`
-	Errors    int       `json:"errors" db:"errors"`
-	TestMode  string    `json:"test_mode" db:"test_mode"`
-	TextSnippet string  `json:"text_snippet" db:"text_snippet"`
-	CreatedAt time.Time `json:"created_at" db:"timestamp"`
+	ID          uint      `json:"id" db:"id"`
+	UserID      uint      `json:"user_id" db:"user_id"`
+	TestTime    time.Time `json:"test_time" db:"timestamp"`
+	WPM         float64   `json:"wpm" db:"wpm"`
+	RawWPM      float64   `json:"raw_wpm" db:"raw_wpm"`
+	Accuracy    float64   `json:"accuracy" db:"accuracy"`
+	Duration    float64   `json:"duration" db:"time_taken"`
+	Errors      int       `json:"errors" db:"errors"`
+	TestMode    string    `json:"test_mode" db:"test_mode"`
+	TextSnippet string    `json:"text_snippet" db:"text_snippet"`
+	CreatedAt   time.Time `json:"created_at" db:"timestamp"`
 }
 
 // TypingResult represents a typing test result with content
 type TypingResult struct {
-	ID         uint      `json:"id" db:"id"`
-	UserID     uint      `json:"user_id" db:"user_id"`
-	Content    string    `json:"content" db:"text_snippet"`
-	TimeSpent  float64   `json:"time_spent" db:"time_taken"`
-	WPM        float64   `json:"wpm" db:"wpm"`
-	RawWPM     float64   `json:"raw_wpm" db:"raw_wpm"`
-	ErrorsCount int      `json:"errors_count" db:"errors"`
-	Accuracy   float64   `json:"accuracy" db:"accuracy"`
-	TestMode   string    `json:"test_mode" db:"test_mode"`
-	CreatedAt  time.Time `json:"created_at" db:"timestamp"`
+	ID          uint      `json:"id" db:"id"`
+	UserID      uint      `json:"user_id" db:"user_id"`
+	Content     string    `json:"content" db:"text_snippet"`
+	TimeSpent   float64   `json:"time_spent" db:"time_taken"`
+	WPM         float64   `json:"wpm" db:"wpm"`
+	RawWPM      float64   `json:"raw_wpm" db:"raw_wpm"`
+	ErrorsCount int       `json:"errors_count" db:"errors"`
+	Accuracy    float64   `json:"accuracy" db:"accuracy"`
+	TestMode    string    `json:"test_mode" db:"test_mode"`
+	CreatedAt   time.Time `json:"created_at" db:"timestamp"`
 }
 
 // UserStats represents aggregated user statistics
 type UserStats struct {
-	UserID           uint      `json:"user_id" db:"user_id"`
-	TotalTests       int       `json:"total_tests" db:"total_tests"`
-	AverageWPM       float64   `json:"average_wpm" db:"average_wpm"`
-	BestWPM          float64   `json:"best_wpm" db:"best_wpm"`
-	AverageAccuracy  float64   `json:"average_accuracy" db:"average_accuracy"`
-	TotalTimeTyped   int       `json:"total_time_typed" db:"total_time_typed"`
-	LastUpdated      time.Time `json:"last_updated" db:"last_updated"`
+	UserID          uint      `json:"user_id" db:"user_id"`
+	TotalTests      int       `json:"total_tests" db:"total_tests"`
+	AverageWPM      float64   `json:"average_wpm" db:"average_wpm"`
+	BestWPM         float64   `json:"best_wpm" db:"best_wpm"`
+	AverageAccuracy float64   `json:"average_accuracy" db:"average_accuracy"`
+	TotalTimeTyped  int       `json:"total_time_typed" db:"total_time_typed"`
+	LastUpdated     time.Time `json:"last_updated" db:"last_updated"`
 }
 
 // Validate checks if a TypingTest is valid
