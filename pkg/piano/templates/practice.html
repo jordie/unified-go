@@ -9,6 +9,29 @@
     {{end}}
 
     <div style="margin: 2rem 0;">
+        <h2>🎚️ MIDI Playback</h2>
+        <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+            <div class="form-group">
+                <label for="playbackControls">Listen to the reference recording:</label>
+                <div id="playbackControls" style="display: flex; gap: 1rem; align-items: center;">
+                    <button type="button" class="btn" onclick="playMIDI()" id="playBtn">▶️ Play Song</button>
+                    <button type="button" class="btn btn-secondary" onclick="pauseMIDI()" id="pauseBtn" disabled>⏸ Pause</button>
+                    <button type="button" class="btn btn-secondary" onclick="stopMIDI()" id="stopBtn" disabled>⏹ Stop</button>
+                    <span id="timeDisplay" style="margin-left: auto; font-weight: 600;">0:00 / 0:00</span>
+                </div>
+                <div class="progress-bar" style="margin-top: 1rem;">
+                    <div class="progress-fill" id="playbackProgress" style="width: 0%; display: flex; align-items: center; justify-content: flex-start;">
+                        <div style="width: 12px; height: 12px; background: white; border-radius: 50%; margin: 0 8px; cursor: pointer;" id="progressHandle"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="volume">Volume Control:</label>
+                <input type="range" id="volume" name="volume" min="0" max="100" value="70" style="width: 200px; cursor: pointer;">
+                <span id="volumeLabel" style="margin-left: 1rem;">70%</span>
+            </div>
+        </div>
+
         <h2>🎚️ Practice Controls</h2>
         <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px;">
             <div class="form-group">
@@ -89,6 +112,112 @@
 </div>
 
 <script>
+    // MIDI Playback State
+    let audioContext;
+    let midiPlayer;
+    let isPlaying = false;
+    let isPaused = false;
+    let currentTime = 0;
+    let totalDuration = 0;
+
+    // Initialize Web Audio API
+    function initAudio() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioContext;
+    }
+
+    // Play MIDI file
+    function playMIDI() {
+        initAudio();
+        isPlaying = true;
+        isPaused = false;
+
+        document.getElementById('playBtn').disabled = true;
+        document.getElementById('pauseBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = false;
+
+        // Fetch MIDI data from server
+        const songID = {{.Song.ID}};
+        fetch(`/api/songs/${songID}`)
+            .then(r => r.json())
+            .then(data => {
+                // In a real implementation, use a library like Tone.js or midi-player-js
+                // For now, simulate playback with a progress bar
+                simulateMIDIPlayback();
+            })
+            .catch(err => {
+                console.error('Failed to load MIDI:', err);
+                alert('Could not load MIDI file');
+            });
+    }
+
+    // Pause MIDI playback
+    function pauseMIDI() {
+        isPaused = true;
+        isPlaying = false;
+        document.getElementById('playBtn').disabled = false;
+        document.getElementById('pauseBtn').disabled = true;
+    }
+
+    // Stop MIDI playback
+    function stopMIDI() {
+        isPlaying = false;
+        isPaused = false;
+        currentTime = 0;
+        updatePlaybackDisplay();
+
+        document.getElementById('playBtn').disabled = false;
+        document.getElementById('pauseBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = true;
+    }
+
+    // Simulate MIDI playback (placeholder)
+    function simulateMIDIPlayback() {
+        totalDuration = {{.Song.Duration | default 180}};  // Default 3 minutes
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            if (!isPlaying) {
+                clearInterval(interval);
+                return;
+            }
+
+            currentTime = (Date.now() - startTime) / 1000;
+            if (currentTime >= totalDuration) {
+                currentTime = totalDuration;
+                stopMIDI();
+            }
+
+            updatePlaybackDisplay();
+        }, 100);
+    }
+
+    // Update playback time display and progress bar
+    function updatePlaybackDisplay() {
+        const minutes = Math.floor(currentTime / 60);
+        const seconds = Math.floor(currentTime % 60);
+        const totalMinutes = Math.floor(totalDuration / 60);
+        const totalSeconds = Math.floor(totalDuration % 60);
+
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')} / ${totalMinutes}:${totalSeconds.toString().padStart(2, '0')}`;
+        document.getElementById('timeDisplay').textContent = timeStr;
+
+        const percent = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
+        document.getElementById('playbackProgress').style.width = percent + '%';
+    }
+
+    // Volume control
+    document.getElementById('volume')?.addEventListener('input', (e) => {
+        const volume = e.target.value;
+        document.getElementById('volumeLabel').textContent = volume + '%';
+        if (audioContext && audioContext.destination) {
+            // In a real implementation, control actual audio volume
+            console.log('Volume set to:', volume + '%');
+        }
+    });
+
+    // Recording state
     let isRecording = false;
     let recordingStart = 0;
 
