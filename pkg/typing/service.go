@@ -2,7 +2,6 @@ package typing
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 )
@@ -20,23 +19,23 @@ func NewService(repo *Repository) *Service {
 }
 
 // ProcessTypingTest processes a typing test and calculates metrics
-func (s *Service) ProcessTypingTest(ctx context.Context, userID uint, content string, duration float64, errors int) (*TypingResult, error) {
+func (s *Service) ProcessTypingTest(ctx context.Context, userID uint, content string, duration float64, errorCount int) (*TypingResult, error) {
 	if userID == 0 {
-		return nil, errors.New("user_id is required")
+		return nil, fmt.Errorf("user_id is required")
 	}
 
 	if duration <= 0 {
-		return nil, errors.New("duration must be positive")
+		return nil, fmt.Errorf("duration must be positive")
 	}
 
-	if errors < 0 {
-		return nil, errors.New("errors cannot be negative")
+	if errorCount < 0 {
+		return nil, fmt.Errorf("errors cannot be negative")
 	}
 
 	// Calculate metrics
 	wpm := CalculateWPM(len(content), duration)
 	rawWPM := CalculateRawWPM(len(content), duration)
-	accuracy := CalculateAccuracy(len(content), errors)
+	accuracy := CalculateAccuracy(len(content), errorCount)
 
 	result := &TypingResult{
 		UserID:      userID,
@@ -44,7 +43,7 @@ func (s *Service) ProcessTypingTest(ctx context.Context, userID uint, content st
 		TimeSpent:   duration,
 		WPM:         wpm,
 		RawWPM:      rawWPM,
-		ErrorsCount: errors,
+		ErrorsCount: errorCount,
 		Accuracy:    accuracy,
 		TestMode:    "standard",
 	}
@@ -67,7 +66,7 @@ func (s *Service) ProcessTypingTest(ctx context.Context, userID uint, content st
 // GetUserProgress retrieves user's typing progress and statistics
 func (s *Service) GetUserProgress(ctx context.Context, userID uint) (*UserStats, error) {
 	if userID == 0 {
-		return nil, errors.New("user_id is required")
+		return nil, fmt.Errorf("user_id is required")
 	}
 
 	stats, err := s.repo.GetUserStats(ctx, userID)
@@ -95,7 +94,7 @@ func (s *Service) GetLeaderboard(ctx context.Context, limit int) ([]UserStats, e
 // GetUserHistory retrieves user's test history
 func (s *Service) GetUserHistory(ctx context.Context, userID uint, days int) ([]TypingResult, error) {
 	if userID == 0 {
-		return nil, errors.New("user_id is required")
+		return nil, fmt.Errorf("user_id is required")
 	}
 
 	if days <= 0 {

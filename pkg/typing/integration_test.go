@@ -306,8 +306,6 @@ func BenchmarkTypingTest(b *testing.B) {
 	ti := setupBenchmark(b)
 	defer ti.db.Close()
 
-	ctx := context.Background()
-
 	testData := map[string]interface{}{
 		"user_id":  1,
 		"content":  "The quick brown fox jumps over the lazy dog and runs through the forest",

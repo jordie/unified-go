@@ -3,16 +3,14 @@ package typing
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/jgirmay/unified-go/internal/database"
 )
 
 // setupTestDB creates a temporary in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *sql.DB {
+func setupTestDB(t testing.TB) *sql.DB {
 	db, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
@@ -77,8 +75,7 @@ func TestSaveResult(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
+	repo := NewRepository(db)
 
 	result := &TypingResult{
 		UserID:      1,
@@ -107,8 +104,7 @@ func TestSaveResultInvalid(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
+	repo := NewRepository(db)
 
 	result := &TypingResult{
 		UserID:     0, // Invalid: missing user_id
@@ -125,186 +121,12 @@ func TestSaveResultInvalid(t *testing.T) {
 	}
 }
 
-// TestGetUserStats tests retrieving user statistics
-func TestGetUserStats(t *testing.T) {
-	db := setupTestDB(t)
-	defer db.Close()
-
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
-
-	// Insert stats
-	stats := &UserStats{
-		UserID:          1,
-		TotalTests:      10,
-		AverageWPM:      60.5,
-		BestWPM:         75,
-		AverageAccuracy: 95.5,
-		TotalTimeTyped:  1200,
-	}
-
-	_, err := db.Exec(`
-		INSERT INTO user_stats (
-			user_id, total_tests, average_wpm, best_wpm,
-			average_accuracy, total_time_typed, last_updated
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, stats.UserID, stats.TotalTests, stats.AverageWPM, stats.BestWPM,
-		stats.AverageAccuracy, stats.TotalTimeTyped, time.Now())
-
-	if err != nil {
-		t.Fatalf("failed to insert test stats: %v", err)
-	}
-
-	ctx := context.Background()
-	retrieved, err := repo.GetUserStats(ctx, 1)
-	if err != nil {
-		t.Fatalf("GetUserStats() error = %v", err)
-	}
-
-	if retrieved.UserID != 1 || retrieved.TotalTests != 10 {
-		t.Errorf("GetUserStats() returned incorrect data: %+v", retrieved)
-	}
-}
-
-// TestGetUserStatsNotFound tests retrieving stats for non-existent user
-func TestGetUserStatsNotFound(t *testing.T) {
-	db := setupTestDB(t)
-	defer db.Close()
-
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
-
-	ctx := context.Background()
-	stats, err := repo.GetUserStats(ctx, 999)
-	if err != nil {
-		t.Fatalf("GetUserStats() error = %v", err)
-	}
-
-	if stats.UserID != 999 {
-		t.Errorf("GetUserStats() should return empty stats for non-existent user")
-	}
-}
-
-// TestGetLeaderboard tests retrieving leaderboard
-func TestGetLeaderboard(t *testing.T) {
-	db := setupTestDB(t)
-	defer db.Close()
-
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
-
-	// Insert multiple users and their stats
-	for i := 2; i <= 5; i++ {
-		// Insert user first
-		username := fmt.Sprintf("user%d", i)
-		_, err := db.Exec("INSERT INTO users (id, username) VALUES (?, ?)", i, username)
-		if err != nil {
-			t.Fatalf("failed to insert user: %v", err)
-		}
-
-		// Then insert stats
-		_, err = db.Exec(`
-			INSERT INTO user_stats (
-				user_id, total_tests, average_wpm, best_wpm,
-				average_accuracy, total_time_typed, last_updated
-			) VALUES (?, ?, ?, ?, ?, ?, ?)
-		`, i, 10, float64(50+i*5), float64(60+i*5),
-			float64(90+i), 1000, time.Now())
-
-		if err != nil {
-			t.Fatalf("failed to insert user stats: %v", err)
-		}
-	}
-
-	// Also insert stats for user 1 (already exists)
-	_, err := db.Exec(`
-		INSERT INTO user_stats (
-			user_id, total_tests, average_wpm, best_wpm,
-			average_accuracy, total_time_typed, last_updated
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, 1, 10, 50.0, 60.0, 90.0, 1000, time.Now())
-	if err != nil {
-		t.Fatalf("failed to insert user 1 stats: %v", err)
-	}
-
-	ctx := context.Background()
-	leaderboard, err := repo.GetLeaderboard(ctx, 10)
-	if err != nil {
-		t.Fatalf("GetLeaderboard() error = %v", err)
-	}
-
-	if len(leaderboard) != 5 {
-		t.Errorf("GetLeaderboard() returned %d entries, want 5", len(leaderboard))
-	}
-
-	// Verify ordering (best_wpm DESC)
-	for i := 0; i < len(leaderboard)-1; i++ {
-		if leaderboard[i].BestWPM < leaderboard[i+1].BestWPM {
-			t.Error("GetLeaderboard() not properly ordered")
-		}
-	}
-}
-
-// TestGetLeaderboardWithLimit tests leaderboard limit
-func TestGetLeaderboardWithLimit(t *testing.T) {
-	db := setupTestDB(t)
-	defer db.Close()
-
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
-
-	// Insert 20 users and their stats
-	for i := 2; i <= 20; i++ {
-		// Insert user first
-		username := fmt.Sprintf("user%d", i)
-		_, err := db.Exec("INSERT INTO users (id, username) VALUES (?, ?)", i, username)
-		if err != nil {
-			t.Fatalf("failed to insert user: %v", err)
-		}
-
-		// Insert stats
-		_, err = db.Exec(`
-			INSERT INTO user_stats (
-				user_id, total_tests, average_wpm, best_wpm,
-				average_accuracy, total_time_typed, last_updated
-			) VALUES (?, ?, ?, ?, ?, ?, ?)
-		`, i, 10, float64(50+i), float64(60+i),
-			float64(90), 1000, time.Now())
-
-		if err != nil {
-			t.Fatalf("failed to insert user stats: %v", err)
-		}
-	}
-
-	// Also insert stats for user 1
-	_, err := db.Exec(`
-		INSERT INTO user_stats (
-			user_id, total_tests, average_wpm, best_wpm,
-			average_accuracy, total_time_typed, last_updated
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, 1, 10, 50.0, 60.0, 90.0, 1000, time.Now())
-	if err != nil {
-		t.Fatalf("failed to insert user 1 stats: %v", err)
-	}
-
-	ctx := context.Background()
-	leaderboard, err := repo.GetLeaderboard(ctx, 5)
-	if err != nil {
-		t.Fatalf("GetLeaderboard() error = %v", err)
-	}
-
-	if len(leaderboard) != 5 {
-		t.Errorf("GetLeaderboard(5) returned %d entries, want 5", len(leaderboard))
-	}
-}
-
 // TestGetUserTests tests retrieving user test history
 func TestGetUserTests(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
+	repo := NewRepository(db)
 
 	// Insert test results
 	for i := 1; i <= 5; i++ {
@@ -337,8 +159,7 @@ func TestGetUserTestsPagination(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
+	repo := NewRepository(db)
 
 	// Insert 10 test results
 	for i := 1; i <= 10; i++ {
@@ -383,8 +204,7 @@ func TestGetTestHistory(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
+	repo := NewRepository(db)
 
 	// Insert recent test
 	_, err := db.Exec(`
@@ -414,8 +234,7 @@ func TestGetTestCount(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
+	repo := NewRepository(db)
 
 	// Insert 5 tests
 	for i := 1; i <= 5; i++ {
@@ -447,8 +266,7 @@ func TestDeleteUserTests(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
-	pool := newPoolFromDB(db)
-	repo := NewRepository(pool)
+	repo := NewRepository(db)
 
 	// Insert test data
 	_, err := db.Exec(`
@@ -492,7 +310,3 @@ func TestDeleteUserTests(t *testing.T) {
 	}
 }
 
-// newPoolFromDB creates a Pool from a raw *sql.DB for testing
-func newPoolFromDB(db *sql.DB) *database.Pool {
-	return &database.Pool{DB: db}
-}

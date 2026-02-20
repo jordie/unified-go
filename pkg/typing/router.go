@@ -236,11 +236,13 @@ func (r *Router) GetLessons(w http.ResponseWriter, req *http.Request) {
 // GetLesson retrieves a specific typing lesson
 func (r *Router) GetLesson(w http.ResponseWriter, req *http.Request) {
 	lessonIdStr := chi.URLParam(req, "lessonId")
-	lessonID, err := strconv.ParseUint(lessonIdStr, 10, 64)
+	lessonID64, err := strconv.ParseUint(lessonIdStr, 10, 64)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "Invalid lesson ID")
 		return
 	}
+
+	lessonID := uint(lessonID64)
 
 	lessons := map[uint]map[string]interface{}{
 		1: {"id": 1, "title": "Home Row Keys", "difficulty": "beginner", "content": "asdfghjkl;"},
