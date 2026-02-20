@@ -50,57 +50,13 @@ func Setup(cfg *config.Config, db *database.Pool) *chi.Mux {
 	fileServer := http.FileServer(http.Dir(cfg.StaticDir))
 	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
 
-	// API routes
-	r.Route("/api", func(r chi.Router) {
-		// Typing app routes
-		r.Route("/typing", func(r chi.Router) {
-			r.Get("/", typing.ListLessons)
-			r.Post("/progress", typing.SaveProgress)
-		})
+	// Mount educational app routers
+	r.Mount("/reading", reading.NewRouter(db.DB).Routes())
+	r.Mount("/piano", piano.NewRouter(db.DB).Routes())
+	r.Mount("/typing", typing.NewRouter(db.DB).Routes())
+	r.Mount("/math", math.NewRouter(db.DB).Routes())
 
-		// Math app routes
-		r.Route("/math", func(r chi.Router) {
-			r.Get("/", math.ListProblems)
-			r.Post("/progress", math.SaveProgress)
-		})
-
-		// Reading app routes (will be updated after handler setup)
-		r.Route("/reading", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(map[string]string{"status": "reading api"})
-			})
-		})
-
-		// Piano app routes
-		r.Route("/piano", func(r chi.Router) {
-			r.Get("/", piano.ListSongs)
-			r.Post("/progress", piano.SaveProgress)
-		})
-
-		// Dashboard routes
-		r.Route("/dashboard", func(r chi.Router) {
-			r.Get("/stats", dashboard.GetStats)
-		})
-	})
-
-	// App-specific routes (with templates)
-	r.Route("/typing", func(r chi.Router) {
-		r.Get("/", typing.IndexHandler)
-	})
-
-	r.Route("/math", func(r chi.Router) {
-		r.Get("/", math.IndexHandler)
-	})
-
-	r.Route("/reading", func(r chi.Router) {
-		r.Get("/", reading.IndexHandler)
-	})
-
-	r.Route("/piano", func(r chi.Router) {
-		r.Get("/", piano.IndexHandler)
-	})
-
+	// Dashboard routes
 	r.Route("/dashboard", func(r chi.Router) {
 		r.Get("/", dashboard.IndexHandler)
 	})
@@ -114,18 +70,13 @@ func Setup(cfg *config.Config, db *database.Pool) *chi.Mux {
 }
 
 // initializeAppHandlers sets up handlers with database connections
+// Note: App routers are now initialized directly in Setup() via NewRouter calls
 func initializeAppHandlers(db *database.Pool) {
-	// Initialize math app handler
+	// Initialize math app handler (legacy - can be removed once all handlers use router pattern)
 	mathRepo := math.NewRepository(db.DB)
 	mathService := math.NewService(mathRepo)
 	mathHandler := math.NewHandler(mathService)
 	math.SetGlobalHandler(mathHandler)
-
-	// TODO: Initialize other app handlers similarly
-	// - typing
-	// - reading
-	// - piano
-	// - dashboard
 }
 
 // healthHandler returns server health status
