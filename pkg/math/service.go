@@ -3,236 +3,425 @@ package math
 import (
 	"context"
 	"fmt"
-	"math"
-	"math/rand"
 	"time"
 )
 
-// Service provides business logic for math functionality
+// Service handles business logic for the math app
 type Service struct {
 	repo *Repository
 }
 
-// NewService creates a new math service
+// NewService creates a new service instance
 func NewService(repo *Repository) *Service {
-	return &Service{
-		repo: repo,
-	}
+	return &Service{repo: repo}
 }
 
-// GenerateProblem generates a random math problem based on type and difficulty
-func (s *Service) GenerateProblem(problemType ProblemType, difficulty DifficultyLevel) (string, float64, error) {
-	var num1, num2 float64
-	var question string
-	var answer float64
-
-	switch difficulty {
-	case Easy:
-		num1 = float64(rand.Intn(10) + 1)
-		num2 = float64(rand.Intn(10) + 1)
-	case Medium:
-		num1 = float64(rand.Intn(50) + 1)
-		num2 = float64(rand.Intn(50) + 1)
-	case Hard:
-		num1 = float64(rand.Intn(100) + 1)
-		num2 = float64(rand.Intn(100) + 1)
-	case VeryHard:
-		num1 = float64(rand.Intn(1000) + 1)
-		num2 = float64(rand.Intn(1000) + 1)
+// ProcessPracticeResult processes a practice session and updates user data
+func (s *Service) ProcessPracticeResult(ctx context.Context, userID uint, result *MathResult) error {
+	if err := result.Validate(); err != nil {
+		return fmt.Errorf("invalid result: %w", err)
 	}
 
-	switch problemType {
-	case Addition:
-		question = fmt.Sprintf("What is %.0f + %.0f?", num1, num2)
-		answer = num1 + num2
-	case Subtraction:
-		if num1 < num2 {
-			num1, num2 = num2, num1
-		}
-		question = fmt.Sprintf("What is %.0f - %.0f?", num1, num2)
-		answer = num1 - num2
-	case Multiplication:
-		question = fmt.Sprintf("What is %.0f × %.0f?", num1, num2)
-		answer = num1 * num2
-	case Division:
-		if num2 == 0 {
-			num2 = 1
-		}
-		question = fmt.Sprintf("What is %.0f ÷ %.0f?", num1, num2)
-		answer = num1 / num2
-	case Fractions:
-		n1 := int(num1) % 10
-		d1 := int(num2)%9 + 1
-		n2 := int(num1) % 10
-		d2 := int(num2)%9 + 1
-		question = fmt.Sprintf("What is %d/%d + %d/%d?", n1, d1, n2, d2)
-		answer = float64(n1)/float64(d1) + float64(n2)/float64(d2)
-	case Algebra:
-		question = fmt.Sprintf("Solve: x + %.0f = %.0f", num1, num1+num2)
-		answer = num2
-	default:
-		return "", 0, fmt.Errorf("unsupported problem type: %s", problemType)
+	result.UserID = userID
+	result.CalculateAccuracy()
+	result.CalculateAverageTime()
+
+	// Save the result
+	if err := s.repo.SaveResult(ctx, result); err != nil {
+		return fmt.Errorf("failed to save result: %w", err)
 	}
 
-	return question, answer, nil
-}
-
-// RecordSolution records a user's attempt at solving a problem
-func (s *Service) RecordSolution(ctx context.Context, solution *ProblemSolution) error {
-	if err := solution.Validate(); err != nil {
-		return err
+	// Update learning profile with practice time
+	profile, _ := s.repo.GetLearningProfile(ctx, userID)
+	if profile == nil {
+		profile = &LearningProfile{UserID: userID}
 	}
+	profile.TotalPracticeTime += int(result.TotalTime)
+	profile.AvgSessionLength = int(float64(profile.TotalPracticeTime) / float64(result.TotalQuestions))
 
-	// Save to repository
-	_, err := s.repo.SaveSolution(ctx, solution)
-	if err != nil {
-		return fmt.Errorf("failed to save solution: %w", err)
+	if err := s.repo.SaveLearningProfile(ctx, profile); err != nil {
+		return fmt.Errorf("failed to update learning profile: %w", err)
 	}
 
 	return nil
 }
 
-// CompleteSession records a completed quiz session
-func (s *Service) CompleteSession(ctx context.Context, session *QuizSession) error {
-	if err := session.Validate(); err != nil {
-		return err
+// SaveQuestionResponse saves a question attempt and updates mastery/mistakes
+func (s *Service) SaveQuestionResponse(ctx context.Context, userID uint, history *QuestionHistory, quality int) error {
+	if err := history.Validate(); err != nil {
+		return fmt.Errorf("invalid question history: %w", err)
 	}
 
-	// Calculate score
-	session.Score = CalculateScore(session.CorrectAnswers, session.TotalProblems)
-	session.CompletedAt = time.Now()
+	history.UserID = userID
 
-	// Save to repository
-	_, err := s.repo.SaveSession(ctx, session)
-	if err != nil {
-		return fmt.Errorf("failed to save session: %w", err)
+	// Save question history
+	if err := s.repo.SaveQuestionHistory(ctx, history); err != nil {
+		return fmt.Errorf("failed to save question history: %w", err)
 	}
 
-	// Update user stats
-	if err := s.repo.updateUserStats(ctx, session.UserID); err != nil {
-		return fmt.Errorf("failed to update stats: %w", err)
+	// Determine fact family if not provided
+	if history.FactFamily == "" {
+		history.FactFamily = ClassifyFactFamily(history.Question, history.Mode)
+	}
+
+	// Update mastery
+	mastery, _ := s.repo.GetMastery(ctx, userID, history.Question, history.Mode)
+	if mastery == nil {
+		mastery = &Mastery{
+			UserID: userID,
+			Fact:   history.Question,
+			Mode:   history.Mode,
+		}
+	}
+
+	if history.IsCorrect {
+		mastery.CorrectStreak++
+	} else {
+		mastery.CorrectStreak = 0
+
+		// Record mistake
+		mistake := &Mistake{
+			UserID:        userID,
+			Question:      history.Question,
+			CorrectAnswer: history.CorrectAnswer,
+			UserAnswer:    history.UserAnswer,
+			Mode:          history.Mode,
+			FactFamily:    history.FactFamily,
+			ErrorCount:    1,
+		}
+
+		if err := s.repo.SaveMistake(ctx, mistake); err != nil {
+			return fmt.Errorf("failed to save mistake: %w", err)
+		}
+	}
+
+	// Update response time statistics
+	mastery.UpdateResponseTime(history.TimeTaken)
+
+	// Calculate mastery level
+	baseAccuracy := float64(mastery.CorrectStreak) / float64(mastery.TotalAttempts)
+	speedBonus := history.TimeTaken < mastery.AverageResponseTime && mastery.AverageResponseTime > 0
+	mastery.CalculateMasteryLevel(baseAccuracy, speedBonus)
+
+	if err := s.repo.SaveMastery(ctx, mastery); err != nil {
+		return fmt.Errorf("failed to save mastery: %w", err)
 	}
 
 	return nil
 }
 
-// GetUserStats retrieves user's math statistics
-func (s *Service) GetUserStats(ctx context.Context, userID uint) (*UserMathStats, error) {
-	if userID == 0 {
-		return nil, fmt.Errorf("user_id is required")
+// UpdatePerformancePattern updates time-of-day performance data
+func (s *Service) UpdatePerformancePattern(ctx context.Context, userID uint, accuracy float64) error {
+	now := time.Now()
+	hour := now.Hour()
+	dayOfWeek := int(now.Weekday())
+
+	pattern, _ := s.repo.GetPerformancePattern(ctx, userID, hour, dayOfWeek)
+	if pattern == nil {
+		pattern = &PerformancePattern{
+			UserID:    userID,
+			HourOfDay: hour,
+			DayOfWeek: dayOfWeek,
+		}
 	}
 
+	// Update moving average for accuracy
+	if pattern.SessionCount > 0 {
+		pattern.AverageAccuracy = (pattern.AverageAccuracy*float64(pattern.SessionCount) + accuracy) / float64(pattern.SessionCount+1)
+	} else {
+		pattern.AverageAccuracy = accuracy
+	}
+
+	pattern.SessionCount++
+
+	if err := pattern.Validate(); err != nil {
+		return fmt.Errorf("invalid performance pattern: %w", err)
+	}
+
+	if err := s.repo.SavePerformancePattern(ctx, pattern); err != nil {
+		return fmt.Errorf("failed to save performance pattern: %w", err)
+	}
+
+	return nil
+}
+
+// AnalyzeUserLearning generates learning profile analysis
+func (s *Service) AnalyzeUserLearning(ctx context.Context, userID uint) (*LearningAnalysis, error) {
+	analysis := &LearningAnalysis{
+		UserID: userID,
+	}
+
+	// Get user stats
 	stats, err := s.repo.GetUserStats(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user stats: %w", err)
 	}
+	analysis.Stats = stats
 
-	return stats, nil
-}
-
-// GetProblemTypeStats retrieves stats for a specific problem type
-func (s *Service) GetProblemTypeStats(ctx context.Context, userID uint, problemType ProblemType) (*MathResult, error) {
-	if userID == 0 {
-		return nil, fmt.Errorf("user_id is required")
-	}
-
-	result, err := s.repo.GetProblemTypeStats(ctx, userID, problemType)
+	// Get performance patterns
+	patterns, err := s.repo.GetPatternsByUser(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get problem type stats: %w", err)
+		return nil, fmt.Errorf("failed to get patterns: %w", err)
 	}
 
-	return result, nil
-}
+	if len(patterns) > 0 {
+		// Find best and worst times
+		bestAccuracy := 0.0
+		worstAccuracy := 100.0
+		bestTime := ""
+		worstTime := ""
 
-// GetLeaderboard retrieves top math performers
-func (s *Service) GetLeaderboard(ctx context.Context, limit int) ([]UserMathStats, error) {
-	if limit <= 0 || limit > 1000 {
-		limit = 100
+		for _, p := range patterns {
+			if p.AverageAccuracy > bestAccuracy {
+				bestAccuracy = p.AverageAccuracy
+				bestTime = GetTimeOfDayFromHour(p.HourOfDay)
+			}
+			if p.AverageAccuracy < worstAccuracy {
+				worstAccuracy = p.AverageAccuracy
+				worstTime = GetTimeOfDayFromHour(p.HourOfDay)
+			}
+		}
+
+		analysis.BestTimeOfDay = bestTime
+		analysis.BestTimeAccuracy = bestAccuracy
+		analysis.WeakTimeOfDay = worstTime
+		analysis.WeakTimeAccuracy = worstAccuracy
 	}
 
-	leaderboard, err := s.repo.GetLeaderboard(ctx, limit)
+	// Get weak fact families
+	weakFamilies, err := s.repo.GetWeakFactFamilies(ctx, userID, 2)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get leaderboard: %w", err)
+		return nil, fmt.Errorf("failed to get weak families: %w", err)
+	}
+	analysis.WeakFactFamilies = weakFamilies
+
+	// Get learning profile
+	profile, _ := s.repo.GetLearningProfile(ctx, userID)
+	if profile != nil {
+		analysis.LearningProfile = profile
 	}
 
-	return leaderboard, nil
+	return analysis, nil
 }
 
-// GetUserSessions retrieves user's quiz sessions
-func (s *Service) GetUserSessions(ctx context.Context, userID uint, limit, offset int) ([]QuizSession, error) {
-	if userID == 0 {
-		return nil, fmt.Errorf("user_id is required")
+// GeneratePracticeRecommendations generates personalized practice recommendations
+func (s *Service) GeneratePracticeRecommendations(ctx context.Context, userID uint, mode string) (*PracticeRecommendation, error) {
+	rec := &PracticeRecommendation{
+		UserID: userID,
+		Mode:   mode,
 	}
 
-	sessions, err := s.repo.GetUserSessions(ctx, userID, limit, offset)
+	// Get weak fact families
+	weakFamilies, err := s.repo.GetWeakFactFamilies(ctx, userID, 2)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sessions: %w", err)
+		return nil, fmt.Errorf("failed to get weak families: %w", err)
 	}
 
-	return sessions, nil
+	rec.WeakAreas = weakFamilies
+
+	// Get recent activity
+	activity, err := s.repo.GetRecentActivity(ctx, userID, 24)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recent activity: %w", err)
+	}
+
+	rec.RecentQuestionsAnswered = activity["questions_answered"]
+	rec.RecentAccuracyPercent = activity["recent_accuracy_percent"]
+
+	// Get best performance time
+	bestTime, bestAccuracy, err := s.repo.GetBestPerformanceTime(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get best performance time: %w", err)
+	}
+
+	rec.BestPracticeTime = bestTime
+	rec.BestTimeAccuracy = bestAccuracy
+
+	// Generate recommendation text
+	if len(weakFamilies) > 0 {
+		rec.Recommendation = "Focus on weak fact families: "
+		for family := range weakFamilies {
+			rec.Recommendation += family + ", "
+		}
+	} else {
+		rec.Recommendation = "Keep up the great work! Try harder difficulty levels."
+	}
+
+	if bestTime != "" {
+		rec.Recommendation += " Practice during " + bestTime + " for best results."
+	}
+
+	return rec, nil
 }
 
-// CalculateScore calculates quiz score based on correct answers
-func CalculateScore(correctAnswers, totalProblems int) float64 {
-	if totalProblems == 0 {
-		return 0
+// GetDueForReview returns facts due for SM-2 review
+func (s *Service) GetDueForReview(ctx context.Context, userID uint, limit int) ([]*RepetitionSchedule, error) {
+	schedules, err := s.repo.GetDueRepetitions(ctx, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get due repetitions: %w", err)
 	}
 
-	accuracy := float64(correctAnswers) / float64(totalProblems)
-	score := accuracy * 100.0
-
-	if score < 0 {
-		score = 0
-	}
-	if score > 100 {
-		score = 100
-	}
-
-	return math.Round(score*10) / 10
+	return schedules, nil
 }
 
-// CalculateAccuracy calculates accuracy percentage
-func CalculateAccuracy(correctAnswers, totalProblems int) float64 {
-	if totalProblems == 0 {
-		return 100.0
+// UpdateRepetitionAfterReview updates SM-2 schedule after review
+func (s *Service) UpdateRepetitionAfterReview(ctx context.Context, userID uint, fact string, mode string, quality int) error {
+	schedule, err := s.repo.GetRepetitionSchedule(ctx, userID, fact, mode)
+	if err != nil {
+		return fmt.Errorf("failed to get schedule: %w", err)
 	}
 
-	if correctAnswers > totalProblems {
-		correctAnswers = totalProblems
+	if schedule == nil {
+		// Create new schedule if it doesn't exist
+		schedule = &RepetitionSchedule{
+			UserID:       userID,
+			Fact:         fact,
+			Mode:         mode,
+			NextReview:   time.Now(),
+			IntervalDays: 1,
+			EaseFactor:   INITIAL_EASE_FACTOR,
+			ReviewCount:  0,
+		}
 	}
 
-	accuracy := (float64(correctAnswers) / float64(totalProblems)) * 100.0
+	// Update schedule using SM-2
+	schedule.ScheduleNextReview(quality)
 
-	if accuracy < 0 {
-		accuracy = 0
-	}
-	if accuracy > 100 {
-		accuracy = 100
+	if err := s.repo.SaveRepetitionSchedule(ctx, schedule); err != nil {
+		return fmt.Errorf("failed to save schedule: %w", err)
 	}
 
-	return math.Round(accuracy*10) / 10
+	return nil
 }
 
-// CalculateAverageTimePerProblem calculates average time per problem
-func CalculateAverageTimePerProblem(totalTime float64, totalProblems int) float64 {
-	if totalProblems == 0 {
-		return 0
-	}
-
-	avgTime := totalTime / float64(totalProblems)
-	return math.Round(avgTime*10) / 10
+// LearningAnalysis represents comprehensive learning analysis
+type LearningAnalysis struct {
+	UserID              uint
+	Stats               *UserStats
+	LearningProfile     *LearningProfile
+	BestTimeOfDay       string
+	BestTimeAccuracy    float64
+	WeakTimeOfDay       string
+	WeakTimeAccuracy    float64
+	WeakFactFamilies    map[string]int
 }
 
-// EstimateMathLevel estimates user's math skill level
-func EstimateMathLevel(accuracy float64) string {
-	switch {
-	case accuracy < 50:
-		return "beginner"
-	case accuracy < 70:
-		return "intermediate"
-	case accuracy < 85:
-		return "advanced"
-	default:
-		return "expert"
+// PracticeRecommendation represents personalized practice recommendations
+type PracticeRecommendation struct {
+	UserID                  uint
+	Mode                    string
+	WeakAreas               map[string]int
+	RecentQuestionsAnswered int
+	RecentAccuracyPercent   int
+	BestPracticeTime        string
+	BestTimeAccuracy        float64
+	Recommendation          string
+}
+
+// ClassifyFactFamily determines the fact family for a question
+func ClassifyFactFamily(question string, mode string) string {
+	// This is a placeholder - will be expanded in service_phonics.go
+	// For now, return a generic classification
+
+	if mode == MODE_ADDITION {
+		return "addition_basic"
+	} else if mode == MODE_SUBTRACTION {
+		return "subtraction_basic"
+	} else if mode == MODE_MULTIPLICATION {
+		return "multiplication_basic"
+	} else if mode == MODE_DIVISION {
+		return "division_basic"
 	}
+
+	return "mixed_basic"
+}
+
+// DeterminePracticeMode determines the best practice mode based on performance
+func (s *Service) DeterminePracticeMode(ctx context.Context, userID uint) (string, error) {
+	// Get mistake analysis
+	analyses, err := s.repo.GetMistakeAnalysis(ctx, userID)
+	if err != nil {
+		return MODE_MIXED, nil
+	}
+
+	if len(analyses) == 0 {
+		return MODE_MIXED, nil
+	}
+
+	// Find mode with most errors
+	modeErrors := make(map[string]int)
+	for range analyses {
+		// Extract mode from analysis if available
+		// For now, just count errors
+		modeErrors["mixed"]++
+	}
+
+	return MODE_MIXED, nil
+}
+
+// CalculatePracticeIntensity calculates recommended practice intensity
+func (s *Service) CalculatePracticeIntensity(ctx context.Context, userID uint) int {
+	stats, err := s.repo.GetUserStats(ctx, userID)
+	if err != nil {
+		return 10 // Default: 10 questions
+	}
+
+	if stats == nil {
+		return 10
+	}
+
+	// Base intensity on accuracy
+	if stats.AverageAccuracy < 60 {
+		return 20 // More practice for low accuracy
+	} else if stats.AverageAccuracy < 80 {
+		return 15
+	} else {
+		return 10
+	}
+}
+
+// EstimateCompletionTime estimates time to master a fact family
+func (s *Service) EstimateCompletionTime(ctx context.Context, userID uint, factFamily string) int {
+	// Get mistakes in this family
+	mistakes, err := s.repo.GetMistakesByFactFamily(ctx, userID, factFamily)
+	if err != nil || len(mistakes) == 0 {
+		return 7 // Default: 7 days
+	}
+
+	// Calculate based on error count
+	errorCount := 0
+	for _, m := range mistakes {
+		errorCount += m.ErrorCount
+	}
+
+	// Estimate: 2 days per error + base 5 days
+	days := 5 + (errorCount * 2)
+	if days > 30 {
+		days = 30 // Cap at 30 days
+	}
+
+	return days
+}
+
+// GetNextLevelUpMilestone returns the next mastery milestone
+func (s *Service) GetNextLevelUpMilestone(ctx context.Context, userID uint) (int, error) {
+	stats, err := s.repo.GetUserStats(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	if stats == nil {
+		return 1, nil
+	}
+
+	// Define milestone levels
+	milestones := []int{5, 10, 25, 50, 100, 250, 500}
+
+	for _, milestone := range milestones {
+		if stats.TotalMastered < milestone {
+			return milestone, nil
+		}
+	}
+
+	return 1000, nil // Ultimate milestone
 }
