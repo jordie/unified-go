@@ -109,6 +109,98 @@ var migrations = []Migration{
 			CREATE INDEX IF NOT EXISTS idx_piano_progress_user_id ON piano_progress(user_id);
 		`,
 	},
+	{
+		Version: 5,
+		Name:    "create_piano_app_tables",
+		SQL: `
+			-- Piano songs catalog
+			CREATE TABLE IF NOT EXISTS songs (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				title TEXT NOT NULL,
+				composer TEXT NOT NULL,
+				description TEXT,
+				midi_file BLOB,
+				difficulty TEXT,
+				duration REAL,
+				bpm INTEGER,
+				time_signature TEXT,
+				key_signature TEXT,
+				total_notes INTEGER,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS idx_songs_difficulty ON songs(difficulty);
+			CREATE INDEX IF NOT EXISTS idx_songs_composer ON songs(composer);
+
+			-- Piano lessons (practice sessions)
+			CREATE TABLE IF NOT EXISTS piano_lessons (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL,
+				song_id INTEGER NOT NULL,
+				start_time DATETIME,
+				end_time DATETIME,
+				duration REAL,
+				notes_correct INTEGER,
+				notes_total INTEGER,
+				accuracy REAL,
+				tempo_accuracy REAL,
+				score REAL,
+				completed INTEGER DEFAULT 0,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+				FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+			);
+			CREATE INDEX IF NOT EXISTS idx_piano_lessons_user_id ON piano_lessons(user_id);
+			CREATE INDEX IF NOT EXISTS idx_piano_lessons_song_id ON piano_lessons(song_id);
+			CREATE INDEX IF NOT EXISTS idx_piano_lessons_created_at ON piano_lessons(created_at);
+
+			-- Practice recordings
+			CREATE TABLE IF NOT EXISTS practice_sessions (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL,
+				song_id INTEGER NOT NULL,
+				lesson_id INTEGER,
+				recording_midi BLOB,
+				duration REAL,
+				notes_hit INTEGER,
+				notes_total INTEGER,
+				tempo_average REAL,
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+				FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+				FOREIGN KEY (lesson_id) REFERENCES piano_lessons(id) ON DELETE SET NULL
+			);
+			CREATE INDEX IF NOT EXISTS idx_practice_sessions_user_id ON practice_sessions(user_id);
+			CREATE INDEX IF NOT EXISTS idx_practice_sessions_song_id ON practice_sessions(song_id);
+
+			-- Music theory quizzes
+			CREATE TABLE IF NOT EXISTS music_theory_quizzes (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL,
+				questions TEXT,
+				answers TEXT,
+				score REAL,
+				completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+			);
+			CREATE INDEX IF NOT EXISTS idx_music_theory_quizzes_user_id ON music_theory_quizzes(user_id);
+
+			-- User music metrics
+			CREATE TABLE IF NOT EXISTS user_music_metrics (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER UNIQUE NOT NULL,
+				total_lessons INTEGER DEFAULT 0,
+				average_accuracy REAL DEFAULT 0,
+				best_score REAL DEFAULT 0,
+				total_practice_time_minutes INTEGER DEFAULT 0,
+				skill_level TEXT DEFAULT 'beginner',
+				created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+			);
+			CREATE INDEX IF NOT EXISTS idx_user_music_metrics_user_id ON user_music_metrics(user_id);
+		`,
+	},
 }
 
 // RunMigrations executes all pending database migrations
