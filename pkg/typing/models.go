@@ -268,3 +268,241 @@ func (s *UserStats) ScanRow(rows *sql.Rows) error {
 		&s.LastUpdated,
 	)
 }
+
+// Race represents a racing session
+type Race struct {
+	ID        uint      `json:"id" db:"id"`
+	UserID    uint      `json:"user_id" db:"user_id"`
+	Mode      string    `json:"mode" db:"mode"`
+	Placement int       `json:"placement" db:"placement"`
+	WPM       float64   `json:"wpm" db:"wpm"`
+	Accuracy  float64   `json:"accuracy" db:"accuracy"`
+	RaceTime  float64   `json:"race_time" db:"race_time"`
+	XPEarned  int       `json:"xp_earned" db:"xp_earned"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
+
+// Validate checks if a Race is valid
+func (r *Race) Validate() error {
+	if r.UserID == 0 {
+		return errors.New("user_id is required")
+	}
+	if r.Mode == "" {
+		return errors.New("mode is required")
+	}
+	if r.Placement < 1 || r.Placement > 4 {
+		return errors.New("placement must be between 1 and 4")
+	}
+	if r.WPM < 0 {
+		return errors.New("wpm cannot be negative")
+	}
+	if r.Accuracy < 0 || r.Accuracy > 100 {
+		return errors.New("accuracy must be between 0 and 100")
+	}
+	if r.RaceTime <= 0 {
+		return errors.New("race_time must be positive")
+	}
+	if r.XPEarned < 0 {
+		return errors.New("xp_earned cannot be negative")
+	}
+	return nil
+}
+
+// MarshalJSON implements custom JSON marshaling for Race
+func (r *Race) MarshalJSON() ([]byte, error) {
+	type Alias Race
+	return json.Marshal(&struct {
+		CreatedAt string `json:"created_at"`
+		*Alias
+	}{
+		CreatedAt: r.CreatedAt.Format(time.RFC3339),
+		Alias:     (*Alias)(r),
+	})
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for Race
+func (r *Race) UnmarshalJSON(data []byte) error {
+	type Alias Race
+	aux := &struct {
+		CreatedAt string `json:"created_at"`
+		*Alias
+	}{
+		Alias: (*Alias)(r),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if aux.CreatedAt != "" {
+		var err error
+		r.CreatedAt, err = time.Parse(time.RFC3339, aux.CreatedAt)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ScanRow scans a database row into a Race
+func (r *Race) ScanRow(rows *sql.Rows) error {
+	return rows.Scan(
+		&r.ID,
+		&r.UserID,
+		&r.Mode,
+		&r.Placement,
+		&r.WPM,
+		&r.Accuracy,
+		&r.RaceTime,
+		&r.XPEarned,
+		&r.CreatedAt,
+	)
+}
+
+// UserRacingStats represents aggregated racing statistics for a user
+type UserRacingStats struct {
+	ID           uint   `json:"id" db:"id"`
+	UserID       uint   `json:"user_id" db:"user_id"`
+	TotalRaces   int    `json:"total_races" db:"total_races"`
+	Wins         int    `json:"wins" db:"wins"`
+	Podiums      int    `json:"podiums" db:"podiums"`
+	TotalXP      int    `json:"total_xp" db:"total_xp"`
+	CurrentCar   string `json:"current_car" db:"current_car"`
+	LastUpdated  time.Time `json:"last_updated" db:"last_updated"`
+}
+
+// Validate checks if UserRacingStats is valid
+func (s *UserRacingStats) Validate() error {
+	if s.UserID == 0 {
+		return errors.New("user_id is required")
+	}
+	if s.TotalRaces < 0 {
+		return errors.New("total_races cannot be negative")
+	}
+	if s.Wins < 0 {
+		return errors.New("wins cannot be negative")
+	}
+	if s.Podiums < 0 {
+		return errors.New("podiums cannot be negative")
+	}
+	if s.Wins > s.TotalRaces {
+		return errors.New("wins cannot exceed total_races")
+	}
+	if s.Podiums > s.TotalRaces {
+		return errors.New("podiums cannot exceed total_races")
+	}
+	if s.TotalXP < 0 {
+		return errors.New("total_xp cannot be negative")
+	}
+	if s.CurrentCar == "" {
+		return errors.New("current_car is required")
+	}
+	return nil
+}
+
+// MarshalJSON implements custom JSON marshaling for UserRacingStats
+func (s *UserRacingStats) MarshalJSON() ([]byte, error) {
+	type Alias UserRacingStats
+	return json.Marshal(&struct {
+		LastUpdated string `json:"last_updated"`
+		*Alias
+	}{
+		LastUpdated: s.LastUpdated.Format(time.RFC3339),
+		Alias:       (*Alias)(s),
+	})
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for UserRacingStats
+func (s *UserRacingStats) UnmarshalJSON(data []byte) error {
+	type Alias UserRacingStats
+	aux := &struct {
+		LastUpdated string `json:"last_updated"`
+		*Alias
+	}{
+		Alias: (*Alias)(s),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if aux.LastUpdated != "" {
+		var err error
+		s.LastUpdated, err = time.Parse(time.RFC3339, aux.LastUpdated)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ScanRow scans a database row into UserRacingStats
+func (s *UserRacingStats) ScanRow(rows *sql.Rows) error {
+	return rows.Scan(
+		&s.ID,
+		&s.UserID,
+		&s.TotalRaces,
+		&s.Wins,
+		&s.Podiums,
+		&s.TotalXP,
+		&s.CurrentCar,
+		&s.LastUpdated,
+	)
+}
+
+// AIOpponent represents an AI-controlled racing opponent
+type AIOpponent struct {
+	ID        uint    `json:"id"`
+	Name      string  `json:"name"`
+	Difficulty string  `json:"difficulty"` // easy, medium, hard
+	WPM       float64 `json:"wpm"`
+	Accuracy  float64 `json:"accuracy"`
+	Car       string  `json:"car"`
+}
+
+// Validate checks if an AIOpponent is valid
+func (a *AIOpponent) Validate() error {
+	if a.Name == "" {
+		return errors.New("name is required")
+	}
+	if a.Difficulty == "" {
+		return errors.New("difficulty is required")
+	}
+	if a.Difficulty != "easy" && a.Difficulty != "medium" && a.Difficulty != "hard" {
+		return errors.New("difficulty must be easy, medium, or hard")
+	}
+	if a.WPM < 0 {
+		return errors.New("wpm cannot be negative")
+	}
+	if a.Accuracy < 0 || a.Accuracy > 100 {
+		return errors.New("accuracy must be between 0 and 100")
+	}
+	if a.Car == "" {
+		return errors.New("car is required")
+	}
+	return nil
+}
+
+// XPBreakdown represents the breakdown of XP earned
+type XPBreakdown struct {
+	Base             int     `json:"base"`
+	PlacementBonus   int     `json:"placement_bonus"`
+	AccuracyBonus    int     `json:"accuracy_bonus"`
+	SpeedBonus       int     `json:"speed_bonus"`
+	DifficultyMultiplier float64 `json:"difficulty_multiplier"`
+	Total            int     `json:"total"`
+}
+
+// CarProgression represents car unlocking progression
+type CarProgression struct {
+	Car       string `json:"car"`
+	XPRequired int   `json:"xp_required"`
+	Unlocked  bool  `json:"unlocked"`
+}
+
+// CarProgression list - 5 cars with XP thresholds
+var CarProgressions = []CarProgression{
+	{Car: "🚗", XPRequired: 0, Unlocked: true},      // Default car, unlocked at start
+	{Car: "🏎️", XPRequired: 100, Unlocked: false},   // Sports car at 100 XP
+	{Car: "🚕", XPRequired: 250, Unlocked: false},   // Taxi at 250 XP
+	{Car: "🚙", XPRequired: 500, Unlocked: false},   // SUV at 500 XP
+	{Car: "🚓", XPRequired: 1000, Unlocked: false},  // Police car at 1000 XP
+}

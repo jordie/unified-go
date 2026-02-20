@@ -1,247 +1,174 @@
 # Quick Start Guide
 
-Get the Unified Educational Platform running in 60 seconds.
+Get the unified-go educational platform running in under 60 seconds.
 
 ## Prerequisites
 
 - Go 1.21+ installed
-- SQLite3 (comes with macOS)
+- SQLite3
+- 100MB disk space
 
-## Installation
-
-```bash
-# Navigate to project
-cd /Users/jgirmay/Desktop/gitrepo/pyWork/unified-go
-
-# Install dependencies
-make install
-
-# Build the project
-make build
-```
-
-## Running the Server
-
-### Option 1: Using Make (Recommended)
+## 1. Clone & Build (30 seconds)
 
 ```bash
-make run
+cd ~/Desktop/gitrepo/pyWork/unified-go
+
+# Download dependencies
+go mod download
+
+# Build binary
+go build -o server ./cmd/server
+
+# Or build with size optimization
+go build -ldflags="-s -w" -o server ./cmd/server
 ```
 
-### Option 2: Direct Execution
+## 2. Initialize Database (15 seconds)
 
 ```bash
-./unified-go
+# Create data directory
+mkdir -p data logs
+
+# Run migrations
+sqlite3 data/unified.db < migrations/001_init.sql
+sqlite3 data/unified.db < migrations/002_reading.sql
+sqlite3 data/unified.db < migrations/003_typing.sql
+sqlite3 data/unified.db < migrations/004_math.sql
+sqlite3 data/unified.db < migrations/005_piano.sql
 ```
 
-### Option 3: Development Mode (with Go run)
+## 3. Start Server (15 seconds)
 
 ```bash
-go run cmd/server/main.go
+# Run server
+./server
+
+# Or with custom config
+PORT=8080 HOST=localhost ./server
+
+# Or in background
+./server &
 ```
 
-### Option 4: Custom Port
+## 4. Access Dashboard
+
+Open browser: **http://localhost:8080**
+
+Default users (if configured):
+- Username: `student`
+- Password: `student123`
+
+Or access API directly:
 
 ```bash
-PORT=8080 ./unified-go
+# Health check
+curl http://localhost:8080/health
+
+# List all endpoints
+curl http://localhost:8080/api/endpoints
+
+# Get typing dashboard
+curl http://localhost:8080/typing/dashboard
 ```
 
-## Verify Installation
-
-Once the server is running, you should see:
-
-```
-2026/02/20 08:52:13 Starting Unified Educational App Server...
-2026/02/20 08:52:13 Environment: development
-2026/02/20 08:52:13 Port: 5000
-2026/02/20 08:52:13 Database initialized successfully
-2026/02/20 08:52:13 Server listening on http://localhost:5000
-```
-
-## Test the Server
-
-### 1. Health Check
+## 5. Run Tests (30 seconds)
 
 ```bash
-curl http://localhost:5000/health | jq .
+# All tests
+go test ./...
+
+# Specific package
+go test ./pkg/reading -v
+
+# With coverage
+go test ./... -cover
 ```
 
-Expected output:
-```json
-{
-  "status": "healthy",
-  "go_version": "go1.21.x",
-  "uptime": "5.2s",
-  "timestamp": "2026-02-20T16:52:18Z",
-  "goroutines": 8,
-  "environment": "development"
-}
-```
+---
 
-### 2. Visit the Dashboard
+## What's Running?
 
-Open your browser to: http://localhost:5000/dashboard
-
-You should see the main dashboard with links to all 5 educational apps.
-
-### 3. Test Each App
-
-- **Typing**: http://localhost:5000/typing
-- **Math**: http://localhost:5000/math
-- **Reading**: http://localhost:5000/reading
-- **Piano**: http://localhost:5000/piano
-
-### 4. Test API Endpoints
-
-```bash
-# Dashboard stats
-curl http://localhost:5000/api/dashboard/stats | jq .
-
-# Typing lessons
-curl http://localhost:5000/api/typing | jq .
-
-# Math problems
-curl http://localhost:5000/api/math | jq .
-
-# Reading books
-curl http://localhost:5000/api/reading | jq .
-
-# Piano songs
-curl http://localhost:5000/api/piano | jq .
-```
-
-## Database
-
-The database is automatically created at `./data/unified.db` with WAL mode enabled.
-
-### Check Database Tables
-
-```bash
-make db-tables
-```
-
-Output:
-```
-math_progress      reading_progress   sessions           users
-piano_progress     schema_migrations  typing_progress
-```
-
-### View Database Schema
-
-```bash
-make db-schema
-```
-
-### Reset Database (WARNING: deletes all data)
-
-```bash
-make db-reset
-```
-
-## Environment Variables
-
-Create a `.env` file (optional):
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` to customize:
-- `PORT` - Server port (default: 5000)
-- `ENVIRONMENT` - dev/staging/production (default: development)
-- `DATABASE_URL` - Database path (default: ./data/unified.db)
-- `SESSION_SECRET` - Session encryption key (CHANGE IN PRODUCTION)
+| App | Routes | Purpose |
+|-----|--------|---------|
+| **Reading** | `/reading/*` | Reading comprehension & vocabulary |
+| **Typing** | `/typing/*` | Typing speed & accuracy practice |
+| **Math** | `/math/*` | Math problems & score tracking |
+| **Piano** | `/piano/*` | Piano practice & music theory |
+| **API** | `/api/*` | JSON API endpoints |
+| **Health** | `/health` | System health status |
 
 ## Common Tasks
 
+### Create a Typing Test
 ```bash
-# Build the project
-make build
+curl -X POST http://localhost:8080/api/typing/test \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 1, "text": "The quick brown fox", "duration_seconds": 60}'
+```
 
-# Run tests
-make test
+### Get User Stats
+```bash
+curl http://localhost:8080/api/users/1/typing/stats
+```
 
-# Run with coverage
-make test-coverage
+### Generate Math Problem
+```bash
+curl -X POST http://localhost:8080/api/math/problem \
+  -H "Content-Type: application/json" \
+  -d '{"problem_type": "addition", "difficulty": "easy"}'
+```
 
-# Format code
-make fmt
+### View Leaderboards
+```bash
+curl http://localhost:8080/api/typing/leaderboard?limit=10
+curl http://localhost:8080/api/math/leaderboard?limit=10
+```
 
-# Clean build artifacts
-make clean
+---
 
-# Show help
-make help
+## Environment Variables
+
+```bash
+PORT=8080              # Server port
+HOST=0.0.0.0          # Server host
+DB_PATH=data/unified.db # Database file
+LOG_LEVEL=info        # Logging level: debug, info, warn, error
+STATIC_DIR=static     # Static files directory
 ```
 
 ## Troubleshooting
 
-### Port Already in Use
-
-If port 5000 is already in use:
-
+**Port already in use:**
 ```bash
-PORT=8080 ./unified-go
+PORT=8081 ./server
 ```
 
-### Database Locked
-
-If you get "database locked" errors, ensure only one instance is running:
-
+**Database locked:**
 ```bash
-pkill unified-go
+# Close any existing connections
+rm data/unified.db
+# Reinitialize database (see step 2)
 ```
 
-### Permission Denied
-
-If the binary won't execute:
-
+**Build fails:**
 ```bash
-chmod +x unified-go
-```
-
-### Missing Dependencies
-
-If you see "package not found" errors:
-
-```bash
-go mod download
+# Update dependencies
 go mod tidy
+
+# Clean build cache
+go clean -cache
+
+# Rebuild
+go build -o server ./cmd/server
 ```
 
-## What's Next?
+## Next Steps
 
-This is **Phase 1** - the foundation layer. All apps currently return placeholder content.
-
-**Phase 2** will migrate the actual application logic from Python/Flask:
-- Real typing lessons and progress tracking
-- Actual math problems and scoring
-- Reading comprehension with books
-- Piano lessons with audio
-- User authentication and profiles
-
-See [README.md](README.md) for the complete migration roadmap.
-
-## File Locations
-
-| Item | Location |
-|------|----------|
-| Binary | `./unified-go` |
-| Database | `./data/unified.db` |
-| Logs | stdout/stderr |
-| Source Code | `./cmd`, `./internal`, `./pkg` |
-| Tests | `./internal/*/\*_test.go` |
-| Static Assets | `./static/` |
-| Templates | `./templates/` |
-
-## Support
-
-For issues:
-1. Check server logs for errors
-2. Verify `/health` endpoint is responding
-3. Ensure environment variables are set correctly
-4. Check that database directory has write permissions
+- Read [DEPLOYMENT.md](docs/DEPLOYMENT.md) for production setup
+- View [API endpoints](docs/API_ENDPOINTS_COMPLETE.md)
+- Check [troubleshooting guide](docs/TROUBLESHOOTING.md)
+- Review [architecture](docs/ARCHITECTURE.md)
 
 ---
 
-**Ready to start?** Run `make run` and visit http://localhost:5000/dashboard
+**Need help?** See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) or check logs at `logs/unified-go.log`
