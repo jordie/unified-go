@@ -2,6 +2,7 @@ package piano
 
 import (
 	"testing"
+	"time"
 )
 
 // TestValidationModule tests the comprehensive validation module
@@ -162,12 +163,15 @@ func TestMIDIServicePhase2(t *testing.T) {
 			t.Errorf("Expected 5 notes, got %d", session.NotesRecorded)
 		}
 
+		// Simulate some time passing
+		time.Sleep(10 * time.Millisecond)
+
 		_, err := ms.FinishRecording(session)
 		if err != nil {
 			t.Errorf("FinishRecording() failed: %v", err)
 		}
 
-		if session.Duration <= 0 {
+		if session.Duration < 0.01 {
 			t.Error("Duration not set after finishing")
 		}
 	})
