@@ -1,0 +1,94 @@
+{{define "content"}}
+<div class="content">
+    <h1>📊 Your Piano Dashboard</h1>
+
+    {{if .Progress}}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="value">{{.Progress.TotalLessonsCompleted}}</div>
+                <div class="label">Total Lessons</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.1f" .Progress.AverageScore}}</div>
+                <div class="label">Average Score</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.1f" .Progress.BestScore}}</div>
+                <div class="label">Best Score</div>
+            </div>
+            <div class="stat-box">
+                <div class="value">{{printf "%.0f" .Progress.TotalPracticedMinutes}}</div>
+                <div class="label">Total Minutes Practiced</div>
+            </div>
+        </div>
+
+        {{if .Metrics}}
+            <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+                <h2>📈 Performance Metrics</h2>
+                <p><strong>Current Level:</strong> <span style="text-transform: capitalize;">{{.Metrics.current_level}}</span></p>
+                <p><strong>Average Accuracy:</strong> {{printf "%.1f" .Metrics.average_accuracy}}%</p>
+                <p><strong>Average Tempo:</strong> {{printf "%.1f" .Metrics.average_tempo}} BPM</p>
+                <p><strong>Fastest Tempo:</strong> {{printf "%.1f" .Metrics.fastest_tempo}} BPM</p>
+                <p><strong>Last Practiced:</strong> {{if .Metrics.last_practiced}}{{.Metrics.last_practiced}}{{else}}Never{{end}}</p>
+
+                <h3 style="margin-top: 1.5rem;">Weekly Activity</h3>
+                <p><strong>Sessions This Week:</strong> {{.Metrics.sessions_last_week}}</p>
+                <p><strong>Practice Time This Week:</strong> {{printf "%.1f" .Metrics.practice_minutes_week}} minutes</p>
+
+                <div class="progress-bar" style="margin-top: 1rem;">
+                    <div class="progress-fill" style="width: {{.Progress.AverageScore}}%;">
+                        {{printf "%.0f" .Progress.AverageScore}}%
+                    </div>
+                </div>
+            </div>
+        {{end}}
+
+        {{if .Lessons}}
+            <h2>📋 Recent Lessons</h2>
+            <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Song</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Difficulty</th>
+                        <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #ddd;">Date</th>
+                        <th style="padding: 0.75rem; text-align: right; border-bottom: 2px solid #ddd;">Score</th>
+                        <th style="padding: 0.75rem; text-align: right; border-bottom: 2px solid #ddd;">Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Lessons}}
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 0.75rem;">
+                                <strong>{{.Title}}</strong>
+                                <br><small style="color: #999;">{{.Composer}}</small>
+                            </td>
+                            <td style="padding: 0.75rem;">
+                                <span class="difficulty {{.Difficulty}}">{{.Difficulty}}</span>
+                            </td>
+                            <td style="padding: 0.75rem;">{{.StartTime.Format "Jan 2, 2006"}}</td>
+                            <td style="padding: 0.75rem; text-align: right;">{{printf "%.1f" .Score}}</td>
+                            <td style="padding: 0.75rem; text-align: right;">{{printf "%.0f" .Duration}}s</td>
+                        </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        {{end}}
+
+        <h2>🎯 Recommended Next Steps</h2>
+        <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin: 1rem 0;">
+            <p>Based on your current level (<strong>{{.Progress.CurrentLevel}}</strong>), here's what we recommend:</p>
+            <ul style="margin: 1rem 0; margin-left: 2rem;">
+                <li>Practice the fundamentals regularly</li>
+                <li>Work on scales and arpeggios</li>
+                <li>Learn pieces at your current difficulty level</li>
+                <li>Take theory quizzes to improve music knowledge</li>
+                <li>Record your practice sessions for feedback</li>
+            </ul>
+        </div>
+    {{else}}
+        <div class="alert alert-info">
+            No practice sessions yet. <a href="/songs">Start practicing a song</a> to track your progress!
+        </div>
+    {{end}}
+</div>
+{{end}}

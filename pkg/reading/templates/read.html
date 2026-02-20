@@ -1,0 +1,122 @@
+{{define "content"}}
+<div class="content">
+    <h1>📖 {{.Book.Title}}</h1>
+    <p><strong>Author:</strong> {{.Book.Author}} | <strong>Level:</strong> <span class="difficulty {{.Book.ReadingLevel}}">{{.Book.ReadingLevel}}</span></p>
+
+    <div style="background: #f5f5f5; padding: 2rem; border-radius: 8px; margin: 2rem 0; line-height: 1.8; font-size: 1.1rem;">
+        <p>{{.Book.Content}}</p>
+    </div>
+
+    <div style="margin: 2rem 0;">
+        <h2>📊 Reading Session</h2>
+        <form id="readingForm" onsubmit="submitReading(event)">
+            <div class="form-group">
+                <label for="timeSpent">Time Spent (seconds):</label>
+                <input type="number" id="timeSpent" name="timeSpent" min="1" required>
+                <small>How long did it take you to read this?</small>
+            </div>
+
+            <div class="form-group">
+                <label for="errors">Errors/Corrections:</label>
+                <input type="number" id="errors" name="errors" min="0" value="0">
+                <small>How many mistakes did you make?</small>
+            </div>
+
+            <div id="results" style="display: none; margin: 1.5rem 0;"></div>
+
+            <button type="submit" class="btn" id="submitBtn">Submit Reading</button>
+            <a href="/books" class="btn btn-secondary">Back to Books</a>
+        </form>
+    </div>
+
+    {{if .Session}}
+        <div class="alert alert-success">
+            <h3>✓ Reading Session Complete!</h3>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.WPM}}</div>
+                    <div class="label">Words Per Minute</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.Accuracy}}%</div>
+                    <div class="label">Accuracy</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value">{{printf "%.1f" .Session.ComprehensionScore}}</div>
+                    <div class="label">Comprehension Score</div>
+                </div>
+            </div>
+
+            {{if .ComprehensionTests}}
+                <h3 style="margin-top: 2rem;">Comprehension Test</h3>
+                <form onsubmit="submitComprehension(event)">
+                    {{range .ComprehensionTests}}
+                        <div class="form-group" style="background: #f9f9f9; padding: 1rem; border-radius: 5px; margin-bottom: 1rem;">
+                            <label>{{.Question}}</label>
+                            <input type="text" name="answer_{{.ID}}" placeholder="Your answer" required>
+                            <small>Correct: {{.CorrectAnswer}}</small>
+                        </div>
+                    {{end}}
+                    <button type="submit" class="btn">Submit Answers</button>
+                </form>
+            {{end}}
+        </div>
+    {{end}}
+</div>
+
+<script>
+    function submitReading(event) {
+        event.preventDefault();
+
+        const timeSpent = parseInt(document.getElementById('timeSpent').value);
+        const errors = parseInt(document.getElementById('errors').value);
+
+        fetch('/api/sessions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: 1,
+                book_id: {{.Book.ID}},
+                content: "{{.Book.Content}}",
+                time_spent: timeSpent,
+                errors: errors
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.id) {
+                showResults(data);
+                document.getElementById('submitBtn').disabled = true;
+            } else {
+                alert('Error: ' + (data.error || 'Failed to save session'));
+            }
+        })
+        .catch(err => alert('Error: ' + err.message));
+    }
+
+    function showResults(session) {
+        const level = session.WPM < 100 ? 'Beginner' :
+                     session.WPM < 200 ? 'Intermediate' :
+                     session.WPM < 300 ? 'Advanced' : 'Expert';
+
+        const resultsHtml = `
+            <div class="alert alert-success">
+                <h3>✓ Session Complete!</h3>
+                <p><strong>WPM:</strong> ${session.WPM.toFixed(1)}</p>
+                <p><strong>Accuracy:</strong> ${session.Accuracy.toFixed(1)}%</p>
+                <p><strong>Comprehension:</strong> ${session.ComprehensionScore.toFixed(1)}</p>
+                <p><strong>Level:</strong> ${level}</p>
+            </div>
+        `;
+        document.getElementById('results').innerHTML = resultsHtml;
+        document.getElementById('results').style.display = 'block';
+    }
+
+    function submitComprehension(event) {
+        event.preventDefault();
+        alert('Comprehension answers submitted!');
+    }
+</script>
+{{end}}

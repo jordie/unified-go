@@ -1,0 +1,63 @@
+{{define "content"}}
+<div class="content">
+    <h1>🏆 Reading Leaderboard</h1>
+
+    <div style="margin-bottom: 2rem;">
+        <form method="GET" action="/leaderboard" style="display: flex; gap: 1rem;">
+            <select name="metric" style="flex: 1;">
+                <option value="wpm" {{if eq .Metric "wpm"}}selected{{end}}>Words Per Minute (WPM)</option>
+                <option value="accuracy" {{if eq .Metric "accuracy"}}selected{{end}}>Accuracy</option>
+                <option value="sessions" {{if eq .Metric "sessions"}}selected{{end}}>Total Sessions</option>
+                <option value="comprehension" {{if eq .Metric "comprehension"}}selected{{end}}>Comprehension Score</option>
+            </select>
+            <button type="submit" class="btn">Sort</button>
+        </form>
+    </div>
+
+    {{if .LeaderboardEntries}}
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <th style="padding: 1rem; text-align: center;">Rank</th>
+                    <th style="padding: 1rem; text-align: left;">User</th>
+                    <th style="padding: 1rem; text-align: right;">Average WPM</th>
+                    <th style="padding: 1rem; text-align: right;">Best WPM</th>
+                    <th style="padding: 1rem; text-align: right;">Accuracy</th>
+                    <th style="padding: 1rem; text-align: right;">Sessions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $index, $entry := .LeaderboardEntries}}
+                    <tr style="border-bottom: 1px solid #eee; {{if eq (mod $index 2) 0}}background: #f9f9f9;{{end}}">
+                        <td style="padding: 1rem; text-align: center; font-weight: bold;">
+                            {{if eq $index 0}}🥇{{else if eq $index 1}}🥈{{else if eq $index 2}}🥉{{else}}#{{add $index 1}}{{end}}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <strong>{{$entry.UserID}}</strong>
+                            <br><small style="color: #999;">Level: {{$entry.FavoriteLevel}}</small>
+                        </td>
+                        <td style="padding: 1rem; text-align: right;">{{printf "%.1f" $entry.AverageWPM}}</td>
+                        <td style="padding: 1rem; text-align: right;">{{printf "%.1f" $entry.BestWPM}}</td>
+                        <td style="padding: 1rem; text-align: right;">{{printf "%.1f" $entry.AverageAccuracy}}%</td>
+                        <td style="padding: 1rem; text-align: right;">{{$entry.TotalSessionsCount}}</td>
+                    </tr>
+                {{end}}
+            </tbody>
+        </table>
+    {{else}}
+        <div class="alert alert-info">
+            No leaderboard data available yet. Start reading to appear on the leaderboard!
+        </div>
+    {{end}}
+</div>
+
+<script>
+    function mod(n, m) {
+        return n % m;
+    }
+
+    function add(n, m) {
+        return n + m;
+    }
+</script>
+{{end}}
