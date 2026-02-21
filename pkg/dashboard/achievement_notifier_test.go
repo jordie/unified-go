@@ -19,7 +19,7 @@ func TestNewAchievementNotifier(t *testing.T) {
 	}
 }
 
-func TestCheckStreakMilestone(t *testing.T) {
+func TestAchievementCheckStreakMilestone(t *testing.T) {
 	hub := realtime.NewHub()
 	notifier := NewAchievementNotifier(hub)
 
@@ -187,7 +187,7 @@ func TestIsAchievementUnlocked(t *testing.T) {
 	}
 }
 
-func TestGetStats(t *testing.T) {
+func TestAchievementGetStats(t *testing.T) {
 	hub := realtime.NewHub()
 	notifier := NewAchievementNotifier(hub)
 

@@ -105,7 +105,7 @@ func TestExtractUserIDFromHeader(t *testing.T) {
 	}
 }
 
-func TestGetStats(t *testing.T) {
+func TestHandlerGetStats(t *testing.T) {
 	hub := realtime.NewHub()
 	handler := NewWebSocketHandler(hub)
 

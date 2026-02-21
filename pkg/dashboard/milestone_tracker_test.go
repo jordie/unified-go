@@ -94,7 +94,7 @@ func TestCheckProgressMilestone(t *testing.T) {
 	}
 }
 
-func TestCheckStreakMilestone(t *testing.T) {
+func TestMilestoneCheckStreakMilestone(t *testing.T) {
 	hub := realtime.NewHub()
 	tracker := NewMilestoneTracker(hub)
 
@@ -181,7 +181,7 @@ func TestGetMilestoneHistory(t *testing.T) {
 	}
 }
 
-func TestGetStats(t *testing.T) {
+func TestMilestoneGetStats(t *testing.T) {
 	hub := realtime.NewHub()
 	tracker := NewMilestoneTracker(hub)
 
