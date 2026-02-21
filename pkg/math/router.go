@@ -99,6 +99,12 @@ func (r *Router) Routes() chi.Router {
 	// Get remediation plan for weak areas
 	r.router.Get("/api/users/{userId}/math/remediation-plan", r.handler.GetRemediationPlan)
 
+	// ==================== AUDIO RECORDING & TRANSCRIPTION ====================
+
+	// Audio recording and transcription
+	r.router.Post("/api/audio/record", r.handler.RecordAudio)
+	r.router.Post("/api/audio/transcribe", r.handler.TranscribeAudio)
+
 	return r.router
 }
 

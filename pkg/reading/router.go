@@ -3,8 +3,13 @@ package reading
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -50,6 +55,10 @@ func (r *Router) Routes() chi.Router {
 
 	// Content validation
 	router.Post("/api/validate", r.ValidateContent)
+
+	// Audio recording and transcription
+	router.Post("/api/audio/record", r.RecordAudio)
+	router.Post("/api/audio/transcribe", r.TranscribeAudio)
 
 	return router
 }
@@ -354,5 +363,124 @@ func (r *Router) ValidateContent(w http.ResponseWriter, req *http.Request) {
 
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"valid": true,
+	})
+}
+
+// RecordAudio handles POST /api/reading/audio/record
+func (r *Router) RecordAudio(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Parse multipart form with max 10MB file size
+	if err := req.ParseMultipartForm(10 << 20); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AudioRecordResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to parse form: %v", err),
+		})
+		return
+	}
+
+	// Get audio file from request
+	file, fileHeader, err := req.FormFile("audio")
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AudioRecordResponse{
+			Success: false,
+			Error:   "No audio file provided",
+		})
+		return
+	}
+	defer file.Close()
+
+	// Get user ID from form
+	userIDStr := req.FormValue("user_id")
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AudioRecordResponse{
+			Success: false,
+			Error:   "Invalid user_id",
+		})
+		return
+	}
+
+	// Create audio storage directory if it doesn't exist
+	audioDir := "data/audio/reading"
+	if err := os.MkdirAll(audioDir, 0755); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AudioRecordResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to create audio directory: %v", err),
+		})
+		return
+	}
+
+	// Generate unique audio ID with timestamp
+	audioID := fmt.Sprintf("reading_%d_%d", userID, time.Now().UnixNano())
+	audioPath := filepath.Join(audioDir, audioID+filepath.Ext(fileHeader.Filename))
+
+	// Save audio file
+	dst, err := os.Create(audioPath)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AudioRecordResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to save audio file: %v", err),
+		})
+		return
+	}
+	defer dst.Close()
+
+	// Copy uploaded file to destination
+	if _, err := io.Copy(dst, file); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AudioRecordResponse{
+			Success: false,
+			Error:   fmt.Sprintf("Failed to write audio file: %v", err),
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(AudioRecordResponse{
+		Success: true,
+		AudioID: audioID,
+		Message: fmt.Sprintf("Audio file recorded successfully (%d bytes)", fileHeader.Size),
+	})
+}
+
+// TranscribeAudio handles POST /api/reading/audio/transcribe
+func (r *Router) TranscribeAudio(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var reqData AudioTranscribeRequest
+	if err := json.NewDecoder(req.Body).Decode(&reqData); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AudioTranscribeResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+		return
+	}
+
+	if reqData.AudioID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AudioTranscribeResponse{
+			Success: false,
+			Error:   "audio_id is required",
+		})
+		return
+	}
+
+	// For now, return a placeholder transcription
+	// In production, this would call Google Speech-to-Text API, Whisper, or similar service
+	transcript := "This is a placeholder transcription. Audio processing service not yet integrated."
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(AudioTranscribeResponse{
+		Success:    true,
+		AudioID:    reqData.AudioID,
+		Transcript: transcript,
+		Confidence: 0.0, // Placeholder confidence
 	})
 }
