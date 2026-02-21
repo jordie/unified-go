@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Practice - Educational App</title>
+    <link rel="manifest" href="/math/manifest.json">
+    <link rel="stylesheet" href="/math/static/style.css">
+    <meta name="theme-color" content="#2196F3">
+</head>
+<body>
+    <div id="root" class="app-container">
+        <header>
+            <h1>Math Practice</h1>
+            <p>Improve your math skills with interactive problems</p>
+        </header>
+        <main id="app-content">
+            <div class="loading">Loading Math App...</div>
+        </main>
+    </div>
+
+    <script>
+        // Register Service Worker for offline support
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/math/service-worker.js')
+                .then((registration) => {
+                    console.log('Service Worker registered successfully:', registration.scope);
+                })
+                .catch((error) => {
+                    console.warn('Service Worker registration failed:', error);
+                });
+        }
+    </script>
+    <script src="/math/static/sounds.js"></script>
+    <script src="/math/static/script.js"></script>
+</body>
+</html>

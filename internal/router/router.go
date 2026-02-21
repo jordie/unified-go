@@ -3,6 +3,7 @@ package router
 import (
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -43,15 +44,71 @@ func Setup(cfg *config.Config, db *database.Pool) *chi.Mux {
 	// Health check endpoint (public)
 	r.Get("/health", healthHandler)
 
-	// Static file serving
+	// Global static file serving
 	fileServer := http.FileServer(http.Dir(cfg.StaticDir))
 	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
 
-	// Mount educational app routers
-	r.Mount("/reading", reading.NewRouter(db.DB).Routes())
+	// ============================================================
+	// Math App Routes
+	// ============================================================
+	r.Route("/math", func(r chi.Router) {
+		// Math app static files (CSS, JS, service worker, etc.)
+		mathStaticDir := filepath.Join(cfg.StaticDir, "math")
+		mathFileServer := http.FileServer(http.Dir(mathStaticDir))
+		r.Handle("/static/*", http.StripPrefix("/math/static", mathFileServer))
+
+		// Math app service worker (explicit route for offline support)
+		r.Get("/service-worker.js", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/javascript")
+			w.Header().Set("Service-Worker-Allowed", "/")
+			http.ServeFile(w, r, filepath.Join(mathStaticDir, "service-worker.js"))
+		})
+
+		// Math app index.html (main page)
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			http.ServeFile(w, r, filepath.Join(cfg.StaticDir, "math", "index.html"))
+		})
+
+		// Mount math API routes
+		r.Mount("/api", math.NewRouter(db.DB).Routes())
+	})
+
+	// ============================================================
+	// Reading App Routes
+	// ============================================================
+	r.Route("/reading", func(r chi.Router) {
+		// Reading app static files (CSS, JS, service worker, etc.)
+		readingStaticDir := filepath.Join(cfg.StaticDir, "reading")
+		readingFileServer := http.FileServer(http.Dir(readingStaticDir))
+		r.Handle("/static/*", http.StripPrefix("/reading/static", readingFileServer))
+
+		// Reading app service worker (explicit route for offline support)
+		r.Get("/service-worker.js", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/javascript")
+			w.Header().Set("Service-Worker-Allowed", "/")
+			http.ServeFile(w, r, filepath.Join(readingStaticDir, "service-worker.js"))
+		})
+
+		// Reading app index.html (main page)
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			http.ServeFile(w, r, filepath.Join(cfg.StaticDir, "reading", "index.html"))
+		})
+
+		// Mount reading API routes
+		r.Mount("/api", reading.NewRouter(db.DB).Routes())
+	})
+
+	// ============================================================
+	// Piano App Routes
+	// ============================================================
 	r.Mount("/piano", piano.NewRouter(db.DB).Routes())
+
+	// ============================================================
+	// Typing App Routes
+	// ============================================================
 	r.Mount("/typing", typing.NewRouter(db.DB).Routes())
-	r.Mount("/math", math.NewRouter(db.DB).Routes())
 
 	// Dashboard routes
 	r.Route("/dashboard", func(r chi.Router) {

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Practice - Educational App</title>
+    <link rel="manifest" href="/reading/manifest.json">
+    <link rel="stylesheet" href="/reading/static/styles.css">
+    <meta name="theme-color" content="#4CAF50">
+</head>
+<body>
+    <div id="root" class="app-container">
+        <header>
+            <h1>Reading Practice</h1>
+            <p>Enhance your reading skills and vocabulary</p>
+        </header>
+        <main id="app-content">
+            <div class="loading">Loading Reading App...</div>
+        </main>
+    </div>
+
+    <script>
+        // Register Service Worker for offline support
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/reading/service-worker.js')
+                .then((registration) => {
+                    console.log('Service Worker registered successfully:', registration.scope);
+                })
+                .catch((error) => {
+                    console.warn('Service Worker registration failed:', error);
+                });
+        }
+    </script>
+    <script src="/reading/static/sounds.js"></script>
+    <script src="/reading/static/audio-recorder.js"></script>
+    <script src="/reading/static/script.js"></script>
+</body>
+</html>
