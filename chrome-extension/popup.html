@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduApps - Learning Companion</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="popup-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>EduApps</h1>
+            <p class="tagline">Learning Companion</p>
+        </div>
+
+        <!-- Auth Section -->
+        <div id="auth-section" class="auth-section">
+            <div id="login-form">
+                <input type="text" id="username" placeholder="Username" class="input-field">
+                <input type="password" id="password" placeholder="Password" class="input-field">
+                <button id="login-btn" class="btn btn-primary">Login</button>
+            </div>
+
+            <div id="user-info" style="display: none;">
+                <div class="user-header">
+                    <div class="user-avatar" id="user-avatar">👤</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Loading...</div>
+                        <button id="logout-btn" class="btn-link">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div id="stats-section" class="stats-section" style="display: none;">
+            <h3>Today's Progress</h3>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="typing-sessions">0</div>
+                    <div class="stat-label">Typing</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="math-sessions">0</div>
+                    <div class="stat-label">Math</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="reading-sessions">0</div>
+                    <div class="stat-label">Reading</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-minutes">0</div>
+                    <div class="stat-label">Minutes</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Practice Buttons -->
+        <div id="practice-section" class="practice-section" style="display: none;">
+            <h3>Quick Practice</h3>
+            <div class="button-grid">
+                <button class="quick-btn typing-btn" data-practice="typing">
+                    <span class="icon">⌨</span>
+                    <span class="label">Typing</span>
+                </button>
+                <button class="quick-btn math-btn" data-practice="math">
+                    <span class="icon">🔢</span>
+                    <span class="label">Math</span>
+                </button>
+                <button class="quick-btn reading-btn" data-practice="reading">
+                    <span class="icon">📖</span>
+                    <span class="label">Reading</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Link -->
+        <div id="dashboard-section" class="dashboard-section" style="display: none;">
+            <a href="#" id="dashboard-link" class="btn btn-secondary" target="_blank">
+                📊 View Full Dashboard
+            </a>
+        </div>
+
+        <!-- Settings -->
+        <div class="settings-section">
+            <h3>Settings</h3>
+            <div class="setting-item">
+                <label>
+                    <input type="checkbox" id="notifications-toggle" checked>
+                    <span>Notifications</span>
+                </label>
+            </div>
+            <div class="setting-item">
+                <label>
+                    <span>Sync Interval (minutes)</span>
+                    <select id="sync-interval" style="margin-top: 5px; width: 100%;">
+                        <option value="5">5 minutes</option>
+                        <option value="10">10 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <a href="#" id="help-link" class="footer-link">Help</a>
+            <span class="separator">•</span>
+            <a href="#" id="settings-link" class="footer-link">Settings</a>
+            <span class="separator">•</span>
+            <a href="#" id="feedback-link" class="footer-link">Feedback</a>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

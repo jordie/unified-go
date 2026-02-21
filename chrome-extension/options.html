@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduApps Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .setting-group input[type="text"],
+        .setting-group input[type="number"],
+        .setting-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .setting-group input:focus,
+        .setting-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin-bottom: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+            display: block;
+        }
+
+        .status-message.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+            display: block;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1565c0;
+            margin-bottom: 20px;
+        }
+
+        .shortcut-key {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-right: 4px;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            font-size: 32px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+        }
+
+        .profile-info h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .profile-info p {
+            font-size: 12px;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚙️ EduApps Settings</h1>
+
+        <div class="status-message" id="status-message"></div>
+
+        <!-- User Profile Section -->
+        <div class="section" id="profile-section" style="display: none;">
+            <h2>User Profile</h2>
+            <div class="profile-section">
+                <div class="profile-avatar" id="profile-avatar">👤</div>
+                <div class="profile-info">
+                    <h3 id="profile-username">Not logged in</h3>
+                    <p id="profile-email">—</p>
+                    <a href="#" id="logout-btn" style="color: #667eea; text-decoration: none; font-size: 12px;">Logout</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Section -->
+        <div class="section" id="login-section">
+            <h2>Login</h2>
+            <div class="setting-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter your username">
+            </div>
+            <div class="setting-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter your password">
+            </div>
+            <button class="btn btn-primary" id="login-btn">Login</button>
+        </div>
+
+        <!-- Notifications Section -->
+        <div class="section">
+            <h2>📢 Notifications</h2>
+            <div class="checkbox-group">
+                <input type="checkbox" id="notifications-enabled" checked>
+                <label for="notifications-enabled">Enable notifications</label>
+            </div>
+            <div class="description">
+                Receive notifications for achievements, reminders, and important updates
+            </div>
+
+            <div style="margin-top: 15px;">
+                <label style="margin-bottom: 10px; display: block;">Notification Types</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="notify-achievements" checked>
+                    <label for="notify-achievements">Achievements & Badges</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="notify-reminders" checked>
+                    <label for="notify-reminders">Daily Reminders</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="notify-milestones" checked>
+                    <label for="notify-milestones">Milestones</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Section -->
+        <div class="section">
+            <h2>🔄 Synchronization</h2>
+            <div class="setting-group">
+                <label for="sync-interval">Sync Interval</label>
+                <select id="sync-interval">
+                    <option value="5">Every 5 minutes</option>
+                    <option value="10">Every 10 minutes</option>
+                    <option value="30">Every 30 minutes</option>
+                    <option value="60">Every hour</option>
+                </select>
+                <div class="description">
+                    How often to sync your progress with EduApps servers
+                </div>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="auto-sync" checked>
+                <label for="auto-sync">Auto-sync on session complete</label>
+            </div>
+        </div>
+
+        <!-- Appearance Section -->
+        <div class="section">
+            <h2>🎨 Appearance</h2>
+            <div class="checkbox-group">
+                <input type="checkbox" id="floating-toolbar" checked>
+                <label for="floating-toolbar">Show floating toolbar on websites</label>
+            </div>
+            <div class="description">
+                Display quick access buttons when browsing
+            </div>
+
+            <div style="margin-top: 15px;">
+                <label for="theme">Theme</label>
+                <select id="theme" style="margin-top: 8px;">
+                    <option value="auto">Auto (matches system)</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Keyboard Shortcuts Section -->
+        <div class="section">
+            <h2>⌨️ Keyboard Shortcuts</h2>
+            <div class="info-box">
+                <div style="margin-bottom: 8px;"><strong>Toggle Extension:</strong> <span class="shortcut-key">Ctrl+Shift+E</span></div>
+                <div style="margin-bottom: 8px;"><strong>Quick Typing:</strong> <span class="shortcut-key">Ctrl+Shift+T</span></div>
+                <div><strong>Quick Math:</strong> <span class="shortcut-key">Ctrl+Shift+M</span></div>
+            </div>
+            <p style="font-size: 12px; color: #666;">
+                Note: On macOS, use <span class="shortcut-key">Cmd</span> instead of <span class="shortcut-key">Ctrl</span>
+            </p>
+        </div>
+
+        <!-- API Settings Section -->
+        <div class="section">
+            <h2>🔌 API Configuration</h2>
+            <div class="setting-group">
+                <label for="api-url">API Endpoint</label>
+                <input type="text" id="api-url" placeholder="https://localhost:5051">
+                <div class="description">
+                    The EduApps server URL (usually https://localhost:5051 for local development)
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Section -->
+        <div class="section">
+            <h2>⚙️ Advanced</h2>
+            <div class="checkbox-group">
+                <input type="checkbox" id="debug-mode">
+                <label for="debug-mode">Debug mode (log to console)</label>
+            </div>
+            <div class="description">
+                Enable detailed logging for troubleshooting
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="btn btn-secondary" id="clear-cache-btn">Clear Cache</button>
+                <button class="btn btn-secondary" id="reset-settings-btn" style="margin-left: 10px;">Reset to Defaults</button>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="buttons">
+            <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+            <button class="btn btn-primary" id="save-btn">Save Changes</button>
+        </div>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+</html>
