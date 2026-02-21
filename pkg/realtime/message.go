@@ -127,6 +127,24 @@ type ErrorMessage struct {
 	Time    time.Time `json:"timestamp"`
 }
 
+// LeaderboardEntry represents a single entry in a leaderboard
+type LeaderboardEntry struct {
+	Rank        int       `json:"rank"`
+	UserID      uint      `json:"user_id"`
+	Username    string    `json:"username"`
+	App         string    `json:"app"`
+	MetricValue float64   `json:"metric_value"`
+	MetricLabel string    `json:"metric_label"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+// LeaderboardMessage represents a complete leaderboard snapshot
+type LeaderboardMessage struct {
+	Category  string              `json:"category"`
+	Entries   []LeaderboardEntry  `json:"entries"`
+	Timestamp time.Time           `json:"timestamp"`
+}
+
 // ToJSON marshals the message to JSON
 func (m *Message) ToJSON() ([]byte, error) {
 	return json.Marshal(m)
