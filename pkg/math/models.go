@@ -471,3 +471,36 @@ const (
 	TIME_AFTERNOON = "afternoon"
 	TIME_EVENING   = "evening"
 )
+
+// === Cross-App Sync Models ===
+
+// SyncEvent represents a cross-app synchronization event
+type SyncEvent struct {
+	EventType string                 `json:"event_type"`
+	Timestamp time.Time              `json:"timestamp"`
+	Data      map[string]interface{} `json:"data"`
+}
+
+// SyncStatus represents the synchronization status
+type SyncStatus struct {
+	AppID           string    `json:"app_id"`
+	EventCount      int       `json:"event_count"`
+	LastSync        time.Time `json:"last_sync"`
+	SubscriberCount int       `json:"subscriber_count"`
+}
+
+// CoordinatorStatus represents coordinator state
+type CoordinatorStatus struct {
+	SubscriberCount int `json:"subscriber_count"`
+	QueueSize       int `json:"queue_size"`
+	ProcessedCount  int `json:"processed_count"`
+}
+
+// QueueStats represents queue statistics
+type QueueStats struct {
+	Size       int       `json:"size"`
+	MaxSize    int       `json:"max_size"`
+	Processed  int       `json:"processed"`
+	Dropped    int       `json:"dropped"`
+	LastUpdate time.Time `json:"last_update"`
+}

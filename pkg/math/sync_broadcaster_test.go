@@ -94,8 +94,8 @@ func TestMultiRecipient(t *testing.T) {
 	}
 }
 
-// TestPriority tests priority handling
-func TestPriority(t *testing.T) {
+// TestPriorityBroadcaster tests priority handling in broadcaster
+func TestPriorityBroadcaster(t *testing.T) {
 	broadcaster := NewSyncBroadcaster()
 	ctx := context.Background()
 
@@ -274,8 +274,8 @@ func TestQueueOperations(t *testing.T) {
 	}
 }
 
-// TestRetryLogic tests retry mechanisms for failed broadcasts
-func TestRetryLogic(t *testing.T) {
+// TestRetryLogicBroadcaster tests retry mechanisms for failed broadcasts
+func TestRetryLogicBroadcaster(t *testing.T) {
 	broadcaster := NewSyncBroadcaster()
 	ctx := context.Background()
 
