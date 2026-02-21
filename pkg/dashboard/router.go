@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jgirmay/unified-go/pkg/realtime"
 )
 
 // Router handles dashboard routes and API endpoints
@@ -15,6 +16,8 @@ type Router struct {
 	router               *chi.Mux
 	service              *Service
 	leaderboardService   *LeaderboardService
+	wsHandler            *WebSocketHandler
+	hub                  *realtime.Hub
 }
 
 // NewRouter creates and configures the dashboard router
@@ -23,10 +26,18 @@ func NewRouter(db *sql.DB) *Router {
 	service := NewService(nil)
 	leaderboardService := NewLeaderboardService(service)
 
+	// Create real-time hub for WebSocket connections
+	hub := realtime.NewHub()
+
+	// Create WebSocket handler
+	wsHandler := NewWebSocketHandler(hub)
+
 	r := &Router{
 		router:             chi.NewRouter(),
 		service:            service,
 		leaderboardService: leaderboardService,
+		wsHandler:          wsHandler,
+		hub:                hub,
 	}
 
 	// Setup middleware
@@ -35,6 +46,9 @@ func NewRouter(db *sql.DB) *Router {
 
 	// Setup routes
 	r.setupRoutes()
+
+	// Start the hub to process events
+	go hub.Run()
 
 	return r
 }
@@ -62,6 +76,9 @@ func (r *Router) setupRoutes() {
 		apiRouter.Get("/trends/{userID}", r.getTrends)
 		apiRouter.Get("/overview/{userID}", r.getDashboardOverview)
 		apiRouter.Get("/recommendations/{userID}", r.getRecommendations)
+
+		// WebSocket route for real-time updates
+		apiRouter.Get("/ws", r.wsHandler.HandleConnection)
 	})
 }
 
