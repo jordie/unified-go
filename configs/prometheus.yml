@@ -1,0 +1,112 @@
+# Prometheus Configuration for GAIA_GO Monitoring
+# Global settings
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'production'
+    cluster: 'gaia-go'
+
+# Alertmanager configuration (optional, for alert routing)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load alert rules from separate file
+rule_files:
+  - 'alerts.yml'
+
+# Scrape configs for each subsystem and the monitoring server itself
+scrape_configs:
+  # Monitoring Server (health checks, pprof, aggregated metrics)
+  - job_name: 'gaia-monitoring'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # API Client Pool subsystem metrics
+  - job_name: 'gaia-api-subsystem'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'gaia_api_.*'
+        action: keep
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # File Manager subsystem metrics
+  - job_name: 'gaia-file-subsystem'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'gaia_file_.*'
+        action: keep
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Network Coordinator subsystem metrics
+  - job_name: 'gaia-network-subsystem'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'gaia_network_.*'
+        action: keep
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Browser Pool subsystem metrics
+  - job_name: 'gaia-browser-subsystem'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'gaia_browser_.*'
+        action: keep
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Process Manager subsystem metrics
+  - job_name: 'gaia-process-subsystem'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'gaia_process_.*'
+        action: keep
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # System-wide metrics (throughput, memory, goroutines)
+  - job_name: 'gaia-system-metrics'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'gaia_system_.*|go_.*|process_.*'
+        action: keep
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Go runtime metrics (garbage collection, memory stats)
+  - job_name: 'gaia-go-runtime'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: '/metrics'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'go_gc.*|go_memstats.*|go_goroutines'
+        action: keep
+    scrape_interval: 15s
+    scrape_timeout: 10s

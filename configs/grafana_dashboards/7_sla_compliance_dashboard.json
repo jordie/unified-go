@@ -1,0 +1,350 @@
+{
+  "dashboard": {
+    "title": "SLA Compliance Dashboard",
+    "description": "Service Level Agreement compliance tracking and violation alerts",
+    "tags": ["gaia", "sla", "compliance"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Overall Availability (24h)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "((1 - (increase(gaia_api_errors_total[24h]) + increase(gaia_file_errors_total[24h]) + increase(gaia_browser_errors_total[24h]) + increase(gaia_process_failed_total[24h])) / (increase(gaia_api_requests_total[24h]) + increase(gaia_file_operations_total[24h]) + increase(gaia_browser_operations_total[24h]) + increase(gaia_process_started_total[24h]) + 1)) * 100)"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 99},
+              {"color": "green", "value": 99.9}
+            ]
+          }
+        }
+      },
+      {
+        "title": "API Availability (Target: 99.9%)",
+        "type": "stat",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "((1 - (increase(gaia_api_errors_total[24h]) / (increase(gaia_api_requests_total[24h]) + 1))) * 100)"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 99},
+              {"color": "green", "value": 99.9}
+            ]
+          }
+        }
+      },
+      {
+        "title": "File Manager Availability (Target: 99%)",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "((1 - (increase(gaia_file_errors_total[24h]) / (increase(gaia_file_operations_total[24h]) + 1))) * 100)"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 95},
+              {"color": "green", "value": 99}
+            ]
+          }
+        }
+      },
+      {
+        "title": "System Uptime",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "up{job=\"gaia-monitoring\"}"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "unit": "short",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {"text": "DOWN"},
+                "1": {"text": "UP"}
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "green", "value": 1}
+            ]
+          }
+        }
+      },
+      {
+        "title": "API Latency vs Target (P95)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, gaia_api_latency_ms)",
+            "legendFormat": "P95 Latency"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 100}
+            ]
+          }
+        }
+      },
+      {
+        "title": "File Latency vs Target (P95)",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, gaia_file_latency_ms)",
+            "legendFormat": "P95 Latency"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 250},
+              {"color": "red", "value": 500}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Error Rate Compliance (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "(gaia_api_errors_total / gaia_api_requests_total) * 100",
+            "legendFormat": "API Error Rate"
+          },
+          {
+            "expr": "(gaia_file_errors_total / gaia_file_operations_total) * 100",
+            "legendFormat": "File Error Rate"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 0.5},
+              {"color": "red", "value": 1}
+            ]
+          }
+        }
+      },
+      {
+        "title": "SLA Violations (24h)",
+        "type": "table",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "count(ALERTS{alertname=~'.*SLA.*'}) + count(ALERTS{alertname=~'.*HighErrorRate.*'}) + count(ALERTS{alertname=~'.*HighLatency.*'}) + count(ALERTS{alertname=~'.*Exhausted.*'})"
+          }
+        ]
+      },
+      {
+        "title": "Throughput vs Target (100K ops/sec min)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_system_throughput_ops_per_sec / 1000",
+            "legendFormat": "Throughput (K ops/sec)"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 75},
+              {"color": "green", "value": 100}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Memory vs Limit (2GB max)",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_system_memory_mb",
+            "legendFormat": "System Memory (MB)"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 1000},
+              {"color": "red", "value": 2000}
+            ]
+          }
+        }
+      },
+      {
+        "title": "API SLO Status",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 32, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, gaia_api_latency_ms) < 100"
+          }
+        ],
+        "mappings": [
+          {
+            "type": "value",
+            "options": {
+              "1": {"text": "✓ PASS", "color": "green"},
+              "0": {"text": "✗ FAIL", "color": "red"}
+            }
+          }
+        ]
+      },
+      {
+        "title": "File SLO Status",
+        "type": "stat",
+        "gridPos": {"x": 4, "y": 32, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, gaia_file_latency_ms) < 500"
+          }
+        ],
+        "mappings": [
+          {
+            "type": "value",
+            "options": {
+              "1": {"text": "✓ PASS", "color": "green"},
+              "0": {"text": "✗ FAIL", "color": "red"}
+            }
+          }
+        ]
+      },
+      {
+        "title": "Availability SLO Status",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 32, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "((1 - (increase(gaia_api_errors_total[24h]) / (increase(gaia_api_requests_total[24h]) + 1))) * 100) >= 99.9"
+          }
+        ],
+        "mappings": [
+          {
+            "type": "value",
+            "options": {
+              "1": {"text": "✓ PASS", "color": "green"},
+              "0": {"text": "✗ FAIL", "color": "red"}
+            }
+          }
+        ]
+      },
+      {
+        "title": "Throughput SLO Status",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 32, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "gaia_system_throughput_ops_per_sec >= 100000"
+          }
+        ],
+        "mappings": [
+          {
+            "type": "value",
+            "options": {
+              "1": {"text": "✓ PASS", "color": "green"},
+              "0": {"text": "✗ FAIL", "color": "red"}
+            }
+          }
+        ]
+      },
+      {
+        "title": "Memory SLO Status",
+        "type": "stat",
+        "gridPos": {"x": 16, "y": 32, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "gaia_system_memory_mb < 2000"
+          }
+        ],
+        "mappings": [
+          {
+            "type": "value",
+            "options": {
+              "1": {"text": "✓ PASS", "color": "green"},
+              "0": {"text": "✗ FAIL", "color": "red"}
+            }
+          }
+        ]
+      },
+      {
+        "title": "Overall Compliance",
+        "type": "stat",
+        "gridPos": {"x": 20, "y": 32, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "(histogram_quantile(0.95, gaia_api_latency_ms) < 100) and ((1 - (increase(gaia_api_errors_total[24h]) / (increase(gaia_api_requests_total[24h]) + 1))) * 100 >= 99.9) and (gaia_system_throughput_ops_per_sec >= 100000)"
+          }
+        ],
+        "mappings": [
+          {
+            "type": "value",
+            "options": {
+              "1": {"text": "✓ COMPLIANT", "color": "green"},
+              "0": {"text": "✗ VIOLATION", "color": "red"}
+            }
+          }
+        ]
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 37,
+    "style": "dark",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    }
+  },
+  "overwrite": true
+}

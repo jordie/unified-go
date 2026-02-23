@@ -1,0 +1,284 @@
+# Alert Rules for GAIA_GO Monitoring
+# SLA violation alerts and performance thresholds
+
+groups:
+  - name: 'gaia_api_alerts'
+    interval: 15s
+    rules:
+      # API Client Pool: High error rate (exceeds 1%)
+      - alert: APIHighErrorRate
+        expr: |
+          (gaia_api_errors_total / gaia_api_requests_total) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          subsystem: api
+        annotations:
+          summary: "API error rate exceeds SLA (>1%)"
+          description: "API error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/api-errors"
+
+      # API Client Pool: High latency (P95 > 100ms)
+      - alert: APIHighLatency
+        expr: |
+          histogram_quantile(0.95, gaia_api_latency_ms) > 100
+        for: 3m
+        labels:
+          severity: warning
+          subsystem: api
+        annotations:
+          summary: "API latency exceeds SLA (P95 > 100ms)"
+          description: "API P95 latency is {{ $value | humanize }}ms on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/api-latency"
+
+      # API Client Pool: Pool exhaustion (no available clients)
+      - alert: APIPoolExhausted
+        expr: |
+          gaia_api_active_clients >= 500
+        for: 1m
+        labels:
+          severity: critical
+          subsystem: api
+        annotations:
+          summary: "API client pool exhausted"
+          description: "All {{ $value }} API client slots in use on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/api-pool-scaling"
+
+      # API Client Pool: Rate limiting triggered
+      - alert: APIRateLimited
+        expr: |
+          increase(gaia_api_rate_limited_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: api
+        annotations:
+          summary: "API rate limiting active ({{ $value }} in last 5m)"
+          description: "Rate limiting triggered {{ $value }} times in last 5 minutes on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/api-rate-limits"
+
+  - name: 'gaia_file_alerts'
+    interval: 15s
+    rules:
+      # File Manager: High error rate
+      - alert: FileHighErrorRate
+        expr: |
+          (gaia_file_errors_total / gaia_file_operations_total) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          subsystem: file
+        annotations:
+          summary: "File operation error rate exceeds SLA (>1%)"
+          description: "File error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/file-errors"
+
+      # File Manager: High latency
+      - alert: FileHighLatency
+        expr: |
+          histogram_quantile(0.95, gaia_file_latency_ms) > 500
+        for: 3m
+        labels:
+          severity: warning
+          subsystem: file
+        annotations:
+          summary: "File operation latency exceeds SLA (P95 > 500ms)"
+          description: "File P95 latency is {{ $value | humanize }}ms on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/file-latency"
+
+      # File Manager: Concurrent operations overload
+      - alert: FileConcurrencyHigh
+        expr: |
+          gaia_file_concurrent_operations > 100
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: file
+        annotations:
+          summary: "File manager concurrent operations elevated"
+          description: "{{ $value }} concurrent file operations on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/file-concurrency"
+
+  - name: 'gaia_browser_alerts'
+    interval: 15s
+    rules:
+      # Browser Pool: High error rate
+      - alert: BrowserHighErrorRate
+        expr: |
+          (gaia_browser_errors_total / gaia_browser_operations_total) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          subsystem: browser
+        annotations:
+          summary: "Browser operation error rate exceeds SLA (>5%)"
+          description: "Browser error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/browser-errors"
+
+      # Browser Pool: Instance limit reached
+      - alert: BrowserPoolExhausted
+        expr: |
+          gaia_browser_instances_active >= 50
+        for: 1m
+        labels:
+          severity: critical
+          subsystem: browser
+        annotations:
+          summary: "Browser pool at capacity ({{ $value }}/50)"
+          description: "{{ $value }} browser instances in use on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/browser-pool-scaling"
+
+      # Browser Pool: Too many tabs
+      - alert: BrowserTabsExcessive
+        expr: |
+          gaia_browser_active_tabs > 1000
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: browser
+        annotations:
+          summary: "Excessive open browser tabs"
+          description: "{{ $value }} tabs open on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/browser-tab-management"
+
+  - name: 'gaia_process_alerts'
+    interval: 15s
+    rules:
+      # Process Manager: High failure rate
+      - alert: ProcessHighFailureRate
+        expr: |
+          (gaia_process_failed_total / gaia_process_started_total) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          subsystem: process
+        annotations:
+          summary: "Process failure rate exceeds SLA (>5%)"
+          description: "Process failure rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/process-failures"
+
+      # Process Manager: High memory usage
+      - alert: ProcessHighMemory
+        expr: |
+          gaia_process_memory_mb > 500
+        for: 3m
+        labels:
+          severity: warning
+          subsystem: process
+        annotations:
+          summary: "Process manager memory usage high"
+          description: "{{ $value | humanize }}MB used by processes on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/process-memory"
+
+      # Process Manager: CPU saturation
+      - alert: ProcessHighCPU
+        expr: |
+          gaia_process_cpu_percent > 80
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: process
+        annotations:
+          summary: "Process manager CPU usage high"
+          description: "{{ $value | humanize }}% CPU used by processes on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/process-cpu"
+
+  - name: 'gaia_network_alerts'
+    interval: 15s
+    rules:
+      # Network Coordinator: Connection limit reached
+      - alert: NetworkConnectionLimitHigh
+        expr: |
+          gaia_network_active_connections > 1000
+        for: 2m
+        labels:
+          severity: warning
+          subsystem: network
+        annotations:
+          summary: "Network active connections elevated"
+          description: "{{ $value }} active connections on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/network-connections"
+
+      # Network Coordinator: Low DNS cache hit rate
+      - alert: NetworkDNSCacheLowHitRate
+        expr: |
+          (gaia_network_dns_cache_hits_total / (gaia_network_dns_cache_hits_total + gaia_network_dns_cache_misses_total)) < 0.8
+        for: 5m
+        labels:
+          severity: info
+          subsystem: network
+        annotations:
+          summary: "DNS cache hit rate below target (>80%)"
+          description: "DNS cache hit rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/dns-caching"
+
+  - name: 'gaia_system_alerts'
+    interval: 15s
+    rules:
+      # System: Low throughput
+      - alert: SystemLowThroughput
+        expr: |
+          gaia_system_throughput_ops_per_sec < 100000
+        for: 5m
+        labels:
+          severity: warning
+          subsystem: system
+        annotations:
+          summary: "System throughput below target (>100K ops/sec)"
+          description: "Throughput is {{ $value | humanize }} ops/sec on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/system-throughput"
+
+      # System: High memory usage
+      - alert: SystemHighMemory
+        expr: |
+          gaia_system_memory_mb > 2000
+        for: 3m
+        labels:
+          severity: warning
+          subsystem: system
+        annotations:
+          summary: "System memory usage high"
+          description: "{{ $value | humanize }}MB in use on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/system-memory"
+
+      # System: Goroutine leak detection
+      - alert: SystemGoroutineLeakDetected
+        expr: |
+          increase(gaia_system_goroutines[5m]) > 1000
+        for: 3m
+        labels:
+          severity: critical
+          subsystem: system
+        annotations:
+          summary: "Potential goroutine leak detected"
+          description: "Goroutines increased by {{ $value }} in last 5 minutes on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/goroutine-leaks"
+
+  - name: 'gaia_availability_alerts'
+    interval: 15s
+    rules:
+      # Monitoring server down
+      - alert: MonitoringServerDown
+        expr: |
+          up{job="gaia-monitoring"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          subsystem: monitoring
+        annotations:
+          summary: "GAIA monitoring server is down"
+          description: "Monitoring server at {{ $labels.instance }} is unreachable"
+          runbook_url: "https://gaia.internal/docs/monitoring-down"
+
+      # Availability target SLA violation
+      - alert: AvailabilitySLAViolation
+        expr: |
+          (gaia_api_success_total / gaia_api_requests_total) < 0.999
+        for: 5m
+        labels:
+          severity: critical
+          subsystem: sla
+        annotations:
+          summary: "99.9% availability SLA violated"
+          description: "Current availability is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://gaia.internal/docs/sla-violations"

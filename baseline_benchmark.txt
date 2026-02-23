@@ -1,0 +1,19 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jgirmay/GAIA_GO/internal/orchestration/subsystems
+cpu: Apple M2
+BenchmarkLoadTesting-8   	 4552274	       273.7 ns/op	     664 B/op	       4 allocs/op
+--- BENCH: BenchmarkLoadTesting-8
+    load_test.go:555: Ops executed: 1
+    load_test.go:556: Max capacity: %!d(<nil>)
+    load_test.go:555: Ops executed: 100
+    load_test.go:556: Max capacity: %!d(<nil>)
+    load_test.go:555: Ops executed: 10000
+    load_test.go:556: Max capacity: %!d(<nil>)
+    load_test.go:555: Ops executed: 1000000
+    load_test.go:556: Max capacity: %!d(<nil>)
+    load_test.go:555: Ops executed: 4552274
+    load_test.go:556: Max capacity: %!d(<nil>)
+	... [output truncated]
+PASS
+ok  	github.com/jgirmay/GAIA_GO/internal/orchestration/subsystems	1.713s

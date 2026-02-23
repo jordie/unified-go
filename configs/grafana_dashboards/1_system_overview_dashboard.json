@@ -1,0 +1,331 @@
+{
+  "dashboard": {
+    "title": "GAIA System Overview",
+    "description": "Real-time monitoring of all GAIA subsystems and overall system health",
+    "tags": ["gaia", "overview", "system"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "System Health Status",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "up{job=\"gaia-monitoring\"}"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "textMode": "auto",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "mappings": [
+          {
+            "type": "value",
+            "options": {
+              "0": {"text": "DOWN", "color": "red"},
+              "1": {"text": "UP", "color": "green"}
+            }
+          }
+        ]
+      },
+      {
+        "title": "System Throughput (ops/sec)",
+        "type": "stat",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_system_throughput_ops_per_sec"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "unit": "ops",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 100000},
+              {"color": "green", "value": 500000}
+            ]
+          }
+        }
+      },
+      {
+        "title": "System Memory (MB)",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_system_memory_mb"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 1000},
+              {"color": "red", "value": 2000}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Active Goroutines",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_system_goroutines"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 1000},
+              {"color": "red", "value": 2000}
+            ]
+          }
+        }
+      },
+      {
+        "title": "API Client Pool Health",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 8, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "(gaia_api_success_total / gaia_api_requests_total) * 100"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 95},
+              {"color": "green", "value": 98}
+            ]
+          }
+        }
+      },
+      {
+        "title": "File Manager Health",
+        "type": "stat",
+        "gridPos": {"x": 4, "y": 8, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "(gaia_file_success_total / gaia_file_operations_total) * 100"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 95},
+              {"color": "green", "value": 98}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Browser Pool Health",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 8, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "(gaia_browser_operations_total - gaia_browser_errors_total) / gaia_browser_operations_total * 100"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 90},
+              {"color": "green", "value": 95}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Process Manager Health",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 8, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "(gaia_process_completed_total / (gaia_process_started_total + 1)) * 100"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 90},
+              {"color": "green", "value": 95}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Network Coordinator Health",
+        "type": "stat",
+        "gridPos": {"x": 16, "y": 8, "w": 4, "h": 6},
+        "targets": [
+          {
+            "expr": "(gaia_network_dns_cache_hits_total / (gaia_network_dns_cache_hits_total + gaia_network_dns_cache_misses_total + 1)) * 100"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 70},
+              {"color": "green", "value": 80}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Throughput Trend (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 14, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_system_throughput_ops_per_sec",
+            "legendFormat": "Throughput"
+          }
+        ],
+        "options": {
+          "legend": {
+            "showLegend": true,
+            "placement": "bottom"
+          }
+        }
+      },
+      {
+        "title": "Error Rate Trends (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 14, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "(gaia_api_errors_total / gaia_api_requests_total) * 100",
+            "legendFormat": "API"
+          },
+          {
+            "expr": "(gaia_file_errors_total / gaia_file_operations_total) * 100",
+            "legendFormat": "File"
+          },
+          {
+            "expr": "(gaia_browser_errors_total / gaia_browser_operations_total) * 100",
+            "legendFormat": "Browser"
+          },
+          {
+            "expr": "(gaia_process_failed_total / (gaia_process_started_total + 1)) * 100",
+            "legendFormat": "Process"
+          }
+        ],
+        "options": {
+          "legend": {
+            "showLegend": true,
+            "placement": "right"
+          }
+        }
+      },
+      {
+        "title": "Active Connections Over Time",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 22, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_api_active_clients",
+            "legendFormat": "API Clients"
+          },
+          {
+            "expr": "gaia_network_active_connections",
+            "legendFormat": "Network Connections"
+          }
+        ]
+      },
+      {
+        "title": "Memory Utilization (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 8, "y": 22, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_system_memory_mb",
+            "legendFormat": "System Memory"
+          },
+          {
+            "expr": "gaia_process_memory_mb",
+            "legendFormat": "Process Memory"
+          }
+        ]
+      },
+      {
+        "title": "Goroutine Leak Detection (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 16, "y": 22, "w": 8, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_system_goroutines",
+            "legendFormat": "Active Goroutines"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 1000},
+              {"color": "red", "value": 2000}
+            ]
+          }
+        }
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 37,
+    "style": "dark",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    }
+  },
+  "overwrite": true
+}

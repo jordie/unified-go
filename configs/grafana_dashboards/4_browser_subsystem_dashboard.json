@@ -1,0 +1,242 @@
+{
+  "dashboard": {
+    "title": "Browser Pool Details",
+    "description": "Browser Pool capacity, operations, and resource utilization",
+    "tags": ["gaia", "browser", "subsystem"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Active Browser Instances",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_browser_instances_active"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 30},
+              {"color": "red", "value": 50}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Active Browser Tabs",
+        "type": "stat",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_browser_active_tabs"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 500},
+              {"color": "red", "value": 1000}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Browser Operation Success Rate",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "((gaia_browser_operations_total - gaia_browser_errors_total) / gaia_browser_operations_total) * 100"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 90},
+              {"color": "green", "value": 95}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Browser Operation Error Rate",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "(gaia_browser_errors_total / gaia_browser_operations_total) * 100"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "gauge",
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 2},
+              {"color": "red", "value": 5}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Browser Instances Trend (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_browser_instances_active",
+            "legendFormat": "Active Instances"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 30},
+              {"color": "red", "value": 50}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Browser Tabs Trend (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_browser_active_tabs",
+            "legendFormat": "Active Tabs"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 500},
+              {"color": "red", "value": 1000}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Operations Rate (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 0, "y": 16, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(gaia_browser_operations_total[5m])",
+            "legendFormat": "Ops/sec"
+          }
+        ]
+      },
+      {
+        "title": "Success vs Failure Rate (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 6, "y": 16, "w": 6, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(gaia_browser_operations_total[5m]) - rate(gaia_browser_errors_total[5m])",
+            "legendFormat": "Success/sec"
+          },
+          {
+            "expr": "rate(gaia_browser_errors_total[5m])",
+            "legendFormat": "Errors/sec"
+          }
+        ]
+      },
+      {
+        "title": "Pool Capacity Utilization (24h)",
+        "type": "timeseries",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "gaia_browser_instances_active / 50 * 100",
+            "legendFormat": "Instance Utilization %"
+          },
+          {
+            "expr": "gaia_browser_active_tabs / 10000 * 100",
+            "legendFormat": "Tab Utilization %"
+          }
+        ],
+        "options": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Total Operations (24h)",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 24, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "increase(gaia_browser_operations_total[24h])"
+          }
+        ]
+      },
+      {
+        "title": "Failed Operations (24h)",
+        "type": "stat",
+        "gridPos": {"x": 8, "y": 24, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "increase(gaia_browser_errors_total[24h])"
+          }
+        ]
+      },
+      {
+        "title": "Current State Summary",
+        "type": "stat",
+        "gridPos": {"x": 16, "y": 24, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "gaia_browser_instances_active"
+          }
+        ],
+        "mappings": [
+          {
+            "type": "value",
+            "options": {
+              "0": {"text": "Idle"},
+              "1": {"text": "Active"}
+            }
+          }
+        ]
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 37,
+    "style": "dark",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    }
+  },
+  "overwrite": true
+}
