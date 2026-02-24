@@ -149,10 +149,9 @@ func ErrorHandler() gin.HandlerFunc {
 // Logger logs HTTP requests
 func Logger() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		var statusColor, methodColor, resetColor string
+		var methodColor, resetColor string
 
 		if param.IsOutputColor() {
-			statusColor = param.StatusCodeColor()
 			methodColor = param.MethodColor()
 			resetColor = param.ResetColor()
 		}
