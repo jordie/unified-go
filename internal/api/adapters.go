@@ -136,3 +136,24 @@ func TypingStatsResponse(c *gin.Context, userStats, recentResults interface{}) {
 		"recent_results": recentResults,
 	})
 }
+
+// ReadingLeaderboardResponse maintains old reading leaderboard response format
+// Old format: {"success": true, "leaderboard": [...], "count": N}
+func ReadingLeaderboardResponse(c *gin.Context, entries interface{}, count int) {
+	c.JSON(200, gin.H{
+		"success":     true,
+		"leaderboard": entries,
+		"count":       count,
+	})
+}
+
+// UserProgressResponse maintains old user progress response format
+// Old format: {"success": true, "current_level": N, "total_words_mastered": N, "last_updated": "..."}
+func UserProgressResponse(c *gin.Context, currentLevel, totalWordsMastered int, lastUpdated string) {
+	c.JSON(200, gin.H{
+		"success":              true,
+		"current_level":        currentLevel,
+		"total_words_mastered": totalWordsMastered,
+		"last_updated":         lastUpdated,
+	})
+}

@@ -290,3 +290,38 @@ type RaceLeaderboardResult struct {
 	TotalRaces int    `json:"total_races"`
 	TotalXP    int    `json:"total_xp"`
 }
+
+// ============================================================================
+// READING APP - Request DTOs
+// ============================================================================
+
+// ReadingSessionRequest represents a request to create a reading session
+type ReadingSessionRequest struct {
+	Level int `json:"level"`
+}
+
+// CompleteSessionRequest represents a request to complete a reading session
+type CompleteSessionRequest struct {
+	SessionID      string `json:"session_id" binding:"required"`
+	WordsCompleted int    `json:"words_completed"`
+	CorrectAnswers int    `json:"correct_answers"`
+	TotalTime      int    `json:"total_time"`
+}
+
+// ============================================================================
+// READING APP - Response DTOs
+// ============================================================================
+
+// ReadingProgressResponse represents user reading progress
+type ReadingProgressResponse struct {
+	CurrentLevel        int    `json:"current_level"`
+	TotalWordsMastered  int    `json:"total_words_mastered"`
+	LastUpdated         string `json:"last_updated"`
+}
+
+// ReadingLeaderboardEntry represents a reading leaderboard entry
+type ReadingLeaderboardEntry struct {
+	Username        string  `json:"username"`
+	WordsMastered   int     `json:"words_mastered"`
+	AverageAccuracy float64 `json:"average_accuracy"`
+}

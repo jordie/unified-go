@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jgirmay/GAIA_GO/internal/api"
 	"github.com/jgirmay/GAIA_GO/internal/middleware"
 	"github.com/jgirmay/GAIA_GO/internal/session"
 )
@@ -67,16 +68,12 @@ func RegisterHandlers(router *gin.RouterGroup, app *ReadingApp, sessionMgr *sess
 // ============================================================================
 
 // handleGetWords returns unique words for practice
+// CRITICAL: Implements NO REPETITION logic - words must not repeat in session
 func handleGetWords(c *gin.Context, app *ReadingApp) {
-	var req struct {
-		Count              int      `json:"count"`
-		Level              int      `json:"level"`
-		ExcludeWords       []string `json:"exclude_words"` // Words already used in this session
-		IncludeMastered    bool     `json:"include_mastered"`
-	}
+	var req api.GetWordsRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -93,14 +90,15 @@ func handleGetWords(c *gin.Context, app *ReadingApp) {
 	}
 
 	// Get unique words, excluding any already used in this session
+	// CRITICAL: This preserves the NO REPETITION requirement
 	words, err := app.GetWordsForPractice(userID, req.Count, req.ExcludeWords)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch words"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
 	if len(words) == 0 {
-		c.JSON(http.StatusOK, gin.H{
+		api.RespondWith(c, http.StatusOK, gin.H{
 			"success": false,
 			"message": "No new words available. Practice more to improve!",
 			"words":   []Word{},
@@ -109,11 +107,7 @@ func handleGetWords(c *gin.Context, app *ReadingApp) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"words":   words,
-		"count":   len(words),
-	})
+	api.WordsListResponse(c, words, len(words))
 }
 
 // handleGetWordsByLevel returns all words at a specific level
@@ -132,7 +126,7 @@ func handleGetWordsByLevel(c *gin.Context, app *ReadingApp) {
 	`, levelNum)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch words"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 	defer rows.Close()
@@ -151,7 +145,7 @@ func handleGetWordsByLevel(c *gin.Context, app *ReadingApp) {
 		words = append(words, w)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"success": true,
 		"words":   words,
 		"level":   levelNum,
@@ -165,12 +159,10 @@ func handleGetWordsByLevel(c *gin.Context, app *ReadingApp) {
 
 // handleMarkWordCorrect records a correct word attempt
 func handleMarkWordCorrect(c *gin.Context, app *ReadingApp, sessionMgr *session.Manager) {
-	var req struct {
-		Word string `json:"word" binding:"required"`
-	}
+	var req api.MarkWordCorrectRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -180,14 +172,14 @@ func handleMarkWordCorrect(c *gin.Context, app *ReadingApp, sessionMgr *session.
 	}
 
 	if err := app.RecordWordAttempt(userID, req.Word, true); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record attempt"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
 	// Award XP for correct answer
 	sessionMgr.AddUserXP(userID, 5)
 
-	c.JSON(http.StatusOK, gin.H{
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"success": true,
 		"message": "Word recorded correctly",
 	})
@@ -195,12 +187,10 @@ func handleMarkWordCorrect(c *gin.Context, app *ReadingApp, sessionMgr *session.
 
 // handleMarkWordError records an incorrect word attempt
 func handleMarkWordError(c *gin.Context, app *ReadingApp, sessionMgr *session.Manager) {
-	var req struct {
-		Word string `json:"word" binding:"required"`
-	}
+	var req api.MarkWordIncorrectRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -210,14 +200,14 @@ func handleMarkWordError(c *gin.Context, app *ReadingApp, sessionMgr *session.Ma
 	}
 
 	if err := app.RecordWordAttempt(userID, req.Word, false); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record attempt"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
 	// Award partial XP for attempt
 	sessionMgr.AddUserXP(userID, 1)
 
-	c.JSON(http.StatusOK, gin.H{
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"success": true,
 		"message": "Word error recorded",
 	})
@@ -231,7 +221,7 @@ func handleRecordWordAttempt(c *gin.Context, app *ReadingApp) {
 	}
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -241,12 +231,12 @@ func handleRecordWordAttempt(c *gin.Context, app *ReadingApp) {
 	}
 
 	if err := app.RecordWordAttempt(userID, req.Word, req.IsCorrect); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record attempt"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":   true,
+	api.RespondWith(c, http.StatusOK, gin.H{
+		"success":    true,
 		"is_correct": req.IsCorrect,
 	})
 }
@@ -264,14 +254,11 @@ func handleGetStats(c *gin.Context, app *ReadingApp, sessionMgr *session.Manager
 
 	stats, err := app.GetUserStats(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stats"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"stats":   stats,
-	})
+	api.StatsNestedResponse(c, stats)
 }
 
 // handleGetUserProgress retrieves user's reading progress
@@ -295,23 +282,18 @@ func handleGetUserProgress(c *gin.Context, app *ReadingApp) {
 	`, userID).Scan(&progress.CurrentLevel, &progress.TotalWordsMastered, &progress.LastUpdated)
 
 	if err != nil && err != sql.ErrNoRows {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch progress"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":             true,
-		"current_level":       progress.CurrentLevel,
-		"total_words_mastered": progress.TotalWordsMastered,
-		"last_updated":        progress.LastUpdated,
-	})
+	api.UserProgressResponse(c, progress.CurrentLevel, progress.TotalWordsMastered, progress.LastUpdated)
 }
 
 // handleGetWordMastery retrieves mastery data for a specific word
 func handleGetWordMastery(c *gin.Context, app *ReadingApp) {
 	word := c.Param("word")
 	if word == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Word parameter required"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -322,23 +304,16 @@ func handleGetWordMastery(c *gin.Context, app *ReadingApp) {
 
 	mastery, err := app.GetWordMastery(userID, word)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch mastery data"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
 	if mastery == nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"mastery": nil,
-			"message": "No mastery data for this word yet",
-		})
+		api.MasteryResponse(c, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"mastery": mastery,
-	})
+	api.MasteryResponse(c, mastery)
 }
 
 // ============================================================================
@@ -347,9 +322,7 @@ func handleGetWordMastery(c *gin.Context, app *ReadingApp) {
 
 // handleCreateSession creates a new reading practice session
 func handleCreateSession(c *gin.Context, app *ReadingApp) {
-	var req struct {
-		Level int `json:"level"`
-	}
+	var req api.ReadingSessionRequest
 
 	if err := c.BindJSON(&req); err != nil {
 		req.Level = 1 // Default to level 1
@@ -369,28 +342,23 @@ func handleCreateSession(c *gin.Context, app *ReadingApp) {
 	`, session.ID, session.UserID, session.Level, session.TotalWords, session.StartedAt)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create session"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":   true,
+	api.RespondWith(c, http.StatusOK, gin.H{
+		"success":    true,
 		"session_id": session.ID,
-		"level":     session.Level,
+		"level":      session.Level,
 	})
 }
 
 // handleCompleteSession marks a reading session as complete
 func handleCompleteSession(c *gin.Context, app *ReadingApp) {
-	var req struct {
-		SessionID      string  `json:"session_id" binding:"required"`
-		WordsCompleted int     `json:"words_completed"`
-		CorrectAnswers int     `json:"correct_answers"`
-		TotalTime      int     `json:"total_time"`
-	}
+	var req api.CompleteSessionRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -407,11 +375,11 @@ func handleCompleteSession(c *gin.Context, app *ReadingApp) {
 	`, req.WordsCompleted, accuracy, req.TotalTime, req.SessionID)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to complete session"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"success":  true,
 		"accuracy": accuracy,
 	})
@@ -423,10 +391,14 @@ func handleCompleteSession(c *gin.Context, app *ReadingApp) {
 
 // handleGetLeaderboard retrieves the reading leaderboard
 func handleGetLeaderboard(c *gin.Context, app *ReadingApp) {
-	limitStr := c.DefaultQuery("limit", "10")
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit > 100 {
-		limit = 10
+	var req api.LeaderboardRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		req.Limit = 10
+		req.Offset = 0
+	}
+
+	if req.Limit <= 0 || req.Limit > 100 {
+		req.Limit = 10
 	}
 
 	rows, err := app.db.Query(`
@@ -437,23 +409,17 @@ func handleGetLeaderboard(c *gin.Context, app *ReadingApp) {
 		GROUP BY u.id, u.username
 		ORDER BY words_mastered DESC, avg_accuracy DESC
 		LIMIT ?
-	`, limit)
+	`, req.Limit)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch leaderboard"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 	defer rows.Close()
 
-	type LeaderboardEntry struct {
-		Username       string  `json:"username"`
-		WordsMastered  int     `json:"words_mastered"`
-		AverageAccuracy float64 `json:"average_accuracy"`
-	}
-
-	var entries []LeaderboardEntry
+	var entries []api.ReadingLeaderboardEntry
 	for rows.Next() {
-		var entry LeaderboardEntry
+		var entry api.ReadingLeaderboardEntry
 		var accuracy *float64
 		if err := rows.Scan(&entry.Username, &entry.WordsMastered, &accuracy); err != nil {
 			continue
@@ -464,9 +430,5 @@ func handleGetLeaderboard(c *gin.Context, app *ReadingApp) {
 		entries = append(entries, entry)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
-		"leaderboard": entries,
-		"count":       len(entries),
-	})
+	api.ReadingLeaderboardResponse(c, entries, len(entries))
 }
