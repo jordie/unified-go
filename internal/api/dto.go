@@ -325,3 +325,78 @@ type ReadingLeaderboardEntry struct {
 	WordsMastered   int     `json:"words_mastered"`
 	AverageAccuracy float64 `json:"average_accuracy"`
 }
+
+// ============================================================================
+// PIANO APP - Request DTOs
+// ============================================================================
+
+// CompleteWarmupRequest represents a request to complete a warmup
+type CompleteWarmupRequest struct {
+	WarmupID int64   `json:"warmup_id" binding:"required"`
+	Score    int     `json:"score"`
+	Accuracy float64 `json:"accuracy"`
+}
+
+// ============================================================================
+// PIANO APP - Response DTOs
+// ============================================================================
+
+// PianoStatsResponse represents piano-specific user statistics
+type PianoStatsResponse struct {
+	AverageLevelAchieved int     `json:"average_level_achieved,omitempty"`
+	TotalSessionsCount   int     `json:"total_sessions_count,omitempty"`
+	AverageAccuracy      float64 `json:"average_accuracy,omitempty"`
+	AverageResponseTime  float64 `json:"average_response_time,omitempty"`
+}
+
+// StreakResponse represents user's current streak information
+type StreakResponse struct {
+	CurrentStreak int `json:"current_streak"`
+	BestStreak    int `json:"best_streak"`
+	LastPractice  string `json:"last_practice,omitempty"`
+}
+
+// GoalResponse represents a user's learning goal
+type GoalResponse struct {
+	ID         int64  `json:"id"`
+	Title      string `json:"title"`
+	Progress   int    `json:"progress"`
+	Target     int    `json:"target"`
+	Completed  bool   `json:"completed"`
+	CreatedAt  string `json:"created_at,omitempty"`
+}
+
+// AchievementResponse represents a badge/achievement earned by user
+type AchievementResponse struct {
+	ID          int64  `json:"id"`
+	BadgeID     string `json:"badge_id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IconURL     string `json:"icon_url,omitempty"`
+	UnlockedAt  string `json:"unlocked_at,omitempty"`
+}
+
+// NoteAnalyticsEntry represents analytics for a single note
+type NoteAnalyticsEntry struct {
+	Note         string  `json:"note"`
+	Hand         string  `json:"hand"`
+	Attempts     int     `json:"attempts"`
+	CorrectCount int     `json:"correct_count"`
+	Accuracy     float64 `json:"accuracy"`
+}
+
+// WarmupResponse represents a piano warmup exercise
+type WarmupResponse struct {
+	ID          int64    `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Notes       []string `json:"notes"`
+}
+
+// CentralSyncResponse represents synchronized user data across apps
+type CentralSyncResponse struct {
+	Stats      interface{} `json:"stats,omitempty"`
+	Badges     interface{} `json:"badges,omitempty"`
+	UserID     int64       `json:"user_id,omitempty"`
+	LastSync   string      `json:"last_sync,omitempty"`
+}

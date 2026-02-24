@@ -58,11 +58,11 @@ type NotePerformance struct {
 
 // UserLevel tracks user's piano level and progress
 type UserLevel struct {
-	UserID          int64     `json:"user_id"`
-	CurrentLevel    int       `json:"current_level"`
-	PracticeSessions int      `json:"practice_sessions"`
-	TotalScore      int       `json:"total_score"`
-	LastPracticed   time.Time `json:"last_practiced"`
+	UserID           int64     `json:"user_id"`
+	CurrentLevel     int       `json:"current_level"`
+	PracticeSessions int       `json:"practice_sessions"`
+	TotalScore       int       `json:"total_score"`
+	LastPracticed    time.Time `json:"last_practiced"`
 }
 
 // StreakData tracks practice streaks

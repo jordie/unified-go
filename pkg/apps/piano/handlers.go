@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jgirmay/GAIA_GO/internal/api"
 	"github.com/jgirmay/GAIA_GO/internal/middleware"
 	"github.com/jgirmay/GAIA_GO/internal/session"
 )
@@ -96,19 +97,10 @@ func RegisterHandlers(router *gin.RouterGroup, app *PianoApp, sessionMgr *sessio
 // ============================================================================
 
 func handleSaveSession(c *gin.Context, app *PianoApp, sessionMgr *session.Manager) {
-	var req struct {
-		Level           int     `json:"level"`
-		Hand            string  `json:"hand"`
-		Score           int     `json:"score"`
-		Accuracy        float64 `json:"accuracy"`
-		TotalNotes      int     `json:"total_notes"`
-		CorrectNotes    int     `json:"correct_notes"`
-		AvgResponseTime float64 `json:"avg_response_time"`
-		Duration        int     `json:"duration"`
-	}
+	var req api.SaveSessionRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -124,13 +116,13 @@ func handleSaveSession(c *gin.Context, app *PianoApp, sessionMgr *session.Manage
 		Accuracy:        req.Accuracy,
 		TotalNotes:      req.TotalNotes,
 		CorrectNotes:    req.CorrectNotes,
-		AvgResponseTime: req.AvgResponseTime,
-		Duration:        req.Duration,
+		AvgResponseTime: 0, // Not in SaveSessionRequest, can be added if needed
+		Duration:        req.TotalTime,
 	}
 
 	sessionID, err := app.SavePracticeSession(userID, session)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
@@ -144,10 +136,9 @@ func handleSaveSession(c *gin.Context, app *PianoApp, sessionMgr *session.Manage
 	// Check for badge unlocks
 	checkAndAwardBadges(app, userID)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":    true,
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"session_id": sessionID,
-		"xp_earned": xpReward,
+		"xp_earned":  xpReward,
 	})
 }
 
@@ -156,14 +147,10 @@ func handleSaveSession(c *gin.Context, app *PianoApp, sessionMgr *session.Manage
 // ============================================================================
 
 func handleSaveNoteEvent(c *gin.Context, app *PianoApp) {
-	var req struct {
-		Note  string `json:"note" binding:"required"`
-		Hand  string `json:"hand" binding:"required"`
-		IsCorrect bool `json:"is_correct"`
-	}
+	var req api.SaveNoteEventRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -174,12 +161,11 @@ func handleSaveNoteEvent(c *gin.Context, app *PianoApp) {
 
 	err = app.RecordNoteAttempt(userID, req.Note, Hand(req.Hand), req.IsCorrect)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record note"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"message": "Note recorded",
 	})
 }
@@ -192,15 +178,11 @@ func handleGetNoteAnalytics(c *gin.Context, app *PianoApp) {
 
 	analytics, err := app.GetNoteAnalytics(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch analytics"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":   true,
-		"analytics": analytics,
-		"count":     len(analytics),
-	})
+	api.NoteAnalyticsResponse(c, analytics, len(analytics))
 }
 
 // ============================================================================
@@ -215,14 +197,11 @@ func handleGetStats(c *gin.Context, app *PianoApp) {
 
 	stats, err := app.GetUserStats(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stats"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"stats":   stats,
-	})
+	api.StatsNestedResponse(c, stats)
 }
 
 // ============================================================================
@@ -231,24 +210,20 @@ func handleGetStats(c *gin.Context, app *PianoApp) {
 
 func handleGetUsers(c *gin.Context, app *PianoApp) {
 	// Simple stub - returns list of users
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"users":   []map[string]interface{}{},
+	api.RespondWith(c, http.StatusOK, gin.H{
+		"users": []map[string]interface{}{},
 	})
 }
 
 func handleCreateUser(c *gin.Context, app *PianoApp) {
-	var req struct {
-		Username string `json:"username" binding:"required"`
-	}
+	var req api.CreateUserRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"user_id":  1,
 		"username": req.Username,
 	})
@@ -258,12 +233,11 @@ func handleSetUser(c *gin.Context, app *PianoApp) {
 	userIDStr := c.Param("id")
 	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"user_id": userID,
 	})
 }
@@ -288,19 +262,16 @@ func handleGetUserLevel(c *gin.Context, app *PianoApp) {
 		level = 1
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"level":   level,
+	api.RespondWith(c, http.StatusOK, gin.H{
+		"level": level,
 	})
 }
 
 func handleUpdateUserLevel(c *gin.Context, app *PianoApp) {
-	var req struct {
-		Level int `json:"level" binding:"required"`
-	}
+	var req api.UpdateLevelRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -315,13 +286,12 @@ func handleUpdateUserLevel(c *gin.Context, app *PianoApp) {
 	)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update level"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"level":   req.Level,
+	api.RespondWith(c, http.StatusOK, gin.H{
+		"level": req.Level,
 	})
 }
 
@@ -337,13 +307,12 @@ func handleGetStreak(c *gin.Context, app *PianoApp) {
 
 	streak, err := app.GetStreak(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch streak"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"streak":  streak,
+	api.RespondWith(c, http.StatusOK, gin.H{
+		"streak": streak,
 	})
 }
 
@@ -359,7 +328,7 @@ func handleGetGoals(c *gin.Context, app *PianoApp) {
 
 	goals, err := app.GetGoals(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch goals"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
@@ -367,32 +336,24 @@ func handleGetGoals(c *gin.Context, app *PianoApp) {
 		goals = []Goal{}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"goals":   goals,
-		"count":   len(goals),
-	})
+	api.GoalsListResponse(c, goals, len(goals))
 }
 
 func handleUpdateGoalProgress(c *gin.Context, app *PianoApp) {
-	var req struct {
-		GoalID   int64 `json:"goal_id" binding:"required"`
-		Progress int   `json:"progress" binding:"required"`
-	}
+	var req api.UpdateGoalProgressRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
 	err := app.UpdateGoalProgress(req.GoalID, req.Progress)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update goal"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"goal_id": req.GoalID,
 	})
 }
@@ -409,7 +370,7 @@ func handleGetBadges(c *gin.Context, app *PianoApp) {
 
 	badges, err := app.GetAchievements(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch badges"})
+		api.RespondWithError(c, api.ErrInternalServer)
 		return
 	}
 
@@ -417,11 +378,7 @@ func handleGetBadges(c *gin.Context, app *PianoApp) {
 		badges = []Achievement{}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"badges":  badges,
-		"count":   len(badges),
-	})
+	api.BadgesListResponse(c, badges, len(badges))
 }
 
 // ============================================================================
@@ -450,18 +407,14 @@ func handleGetWarmups(c *gin.Context) {
 		},
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":  true,
-		"warmups":  warmups,
-		"count":    len(warmups),
-	})
+	api.WarmupListResponse(c, warmups, len(warmups))
 }
 
 func handleStartWarmup(c *gin.Context, app *PianoApp) {
 	warmupIDStr := c.Param("id")
 	warmupID, err := strconv.ParseInt(warmupIDStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid warmup ID"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
@@ -470,8 +423,7 @@ func handleStartWarmup(c *gin.Context, app *PianoApp) {
 		userID = 1
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":   true,
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"warmup_id": warmupID,
 		"user_id":   userID,
 		"started":   true,
@@ -479,19 +431,14 @@ func handleStartWarmup(c *gin.Context, app *PianoApp) {
 }
 
 func handleCompleteWarmup(c *gin.Context, app *PianoApp) {
-	var req struct {
-		WarmupID int64 `json:"warmup_id" binding:"required"`
-		Score    int   `json:"score"`
-		Accuracy float64 `json:"accuracy"`
-	}
+	var req api.CompleteWarmupRequest
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		api.RespondWithError(c, api.ErrBadRequest)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success":   true,
+	api.RespondWith(c, http.StatusOK, gin.H{
 		"warmup_id": req.WarmupID,
 		"score":     req.Score,
 		"xp_earned": 5,
@@ -511,10 +458,9 @@ func handleCentralSync(c *gin.Context, app *PianoApp, sessionMgr *session.Manage
 	stats, _ := app.GetUserStats(userID)
 	badges, _ := app.GetAchievements(userID)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"stats":   stats,
-		"badges":  badges,
+	api.RespondWith(c, http.StatusOK, gin.H{
+		"stats":  stats,
+		"badges": badges,
 	})
 }
 
