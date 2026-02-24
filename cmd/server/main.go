@@ -55,6 +55,7 @@ func main() {
 	for appName, staticDir := range staticDirs {
 		appRouter.RegisterStaticFiles(appName, staticDir)
 	}
+	appRouter.RegisterSharedStaticFiles()
 	log.Printf("[INFO] Static files registered for all apps")
 
 	// Print routes

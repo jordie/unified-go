@@ -94,13 +94,23 @@ func DiscoverApps(db *sql.DB, sessionManager *session.Manager) (*DiscoveredApps,
 	return discovered, nil
 }
 
-// ValidateDependencies checks that all declared dependencies exist
+// ValidateDependencies checks that all declared app-to-app dependencies exist
+// System dependencies (database, session_manager, etc.) are provided by the framework
 func ValidateDependencies(appMap map[string]appmodule.AppRegistry) error {
+	// System dependencies provided by the framework
+	systemDeps := map[string]bool{
+		"database":        true,
+		"session_manager": true,
+	}
+
 	for appName, app := range appMap {
 		for _, dep := range app.Dependencies() {
 			if dep.Required {
-				if _, exists := appMap[dep.Name]; !exists {
-					return fmt.Errorf("app %s requires missing dependency: %s", appName, dep.Name)
+				// Only validate app-to-app dependencies, not system dependencies
+				if !systemDeps[dep.Name] {
+					if _, exists := appMap[dep.Name]; !exists {
+						return fmt.Errorf("app %s requires missing app dependency: %s", appName, dep.Name)
+					}
 				}
 			}
 		}

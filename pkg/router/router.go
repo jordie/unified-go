@@ -91,8 +91,10 @@ func (r *AppRouter) RegisterAppRoutes(appName string) *gin.RouterGroup {
 func (r *AppRouter) RegisterStaticFiles(appName, staticDir string) {
 	// App-specific static files
 	r.engine.Static("/"+appName+"/static", staticDir)
+}
 
-	// Shared static files
+// RegisterSharedStaticFiles serves shared static files (call once)
+func (r *AppRouter) RegisterSharedStaticFiles() {
 	r.engine.Static("/shared_static", "./web/static")
 }
 
