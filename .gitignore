@@ -9,6 +9,12 @@ dist/
 # Test binaries
 *.test
 
+# Data and databases
+data/
+*.db
+*.db-shm
+*.db-wal
+
 # Profiling data
 profiling/
 *.prof
