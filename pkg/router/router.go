@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jgirmay/GAIA_GO/internal/app"
+	"github.com/jgirmay/GAIA_GO/internal/codegen"
 	"github.com/jgirmay/GAIA_GO/internal/docs"
 	"github.com/jgirmay/GAIA_GO/internal/health"
 	"github.com/jgirmay/GAIA_GO/internal/middleware"
@@ -111,6 +112,12 @@ func (r *AppRouter) RegisterHealthCheck(db *sql.DB, apps []app.AppRegistry, meta
 	checker := health.NewHealthChecker(db, apps, metadata)
 	healthHandler := health.NewHealthHandler(checker)
 	healthHandler.RegisterRoutes(r.engine)
+}
+
+// RegisterSDKGeneration registers SDK generation routes
+func (r *AppRouter) RegisterSDKGeneration(spec *docs.OpenAPISpec) {
+	codegenHandler := codegen.NewCodegenHandler(spec)
+	codegenHandler.RegisterRoutes(r.engine)
 }
 
 // ============================================================================

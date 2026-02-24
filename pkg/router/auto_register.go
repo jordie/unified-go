@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 
+	appmodule "github.com/jgirmay/GAIA_GO/internal/app"
+	"github.com/jgirmay/GAIA_GO/internal/docs"
 	"github.com/jgirmay/GAIA_GO/internal/session"
 	mathhandlers "github.com/jgirmay/GAIA_GO/pkg/apps/math"
 	pianohandlers "github.com/jgirmay/GAIA_GO/pkg/apps/piano"
@@ -38,7 +40,17 @@ func (r *AppRouter) RegisterAllApps(db *sql.DB, sessionManager *session.Manager)
 	r.RegisterHealthCheck(db, discovered.Apps, discovered.Metadata)
 	log.Printf("Registered health check endpoints\n")
 
+	// Register SDK generation endpoints (Phase 4)
+	openAPISpec := discoveredOpenAPISpec(discovered.Apps, discovered.Metadata)
+	r.RegisterSDKGeneration(openAPISpec)
+	log.Printf("Registered SDK generation endpoints\n")
+
 	return nil
+}
+
+// discoveredOpenAPISpec generates OpenAPI spec from discovered apps
+func discoveredOpenAPISpec(apps []appmodule.AppRegistry, metadata map[string]*appmodule.AppMetadata) *docs.OpenAPISpec {
+	return docs.GenerateOpenAPISpec(apps, metadata)
 }
 
 // registerAppHandlers registers all handlers for a specific app
