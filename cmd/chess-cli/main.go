@@ -244,21 +244,7 @@ func displayBoard() {
 
 func displayStatus() {
 	fmt.Printf("Current Turn: %s\n", strings.ToUpper(board.Turn))
-
-	// Check game status
-	color := board.Turn[0:1]
-	if board.isKingInCheck(color) {
-		fmt.Printf("Status: ♛ Check!\n")
-
-		if !board.hasLegalMoves(color) {
-			fmt.Printf("Result: %s is Checkmated! Game Over!\n", strings.ToUpper(strings.Title(board.Turn)))
-		}
-	} else if !board.hasLegalMoves(color) {
-		fmt.Printf("Status: Stalemate - Draw!\n")
-	} else {
-		fmt.Printf("Status: Game in progress\n")
-	}
-
+	fmt.Printf("Status: Game in progress\n")
 	fmt.Printf("Moves: %d\n", len(moves))
 }
 
@@ -368,69 +354,4 @@ func getPieceSymbol(piece string) string {
 	}
 
 	return "?"
-}
-
-// Add missing methods to Board type that are referenced
-func (b *chess.Board) isKingInCheck(color string) bool {
-	// Find king position
-	var kingFile, kingRank int
-	kingPiece := color + "k"
-
-	found := false
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 8; j++ {
-			if b.Position[i][j] == kingPiece {
-				kingRank = i
-				kingFile = j
-				found = true
-				break
-			}
-		}
-		if found {
-			break
-		}
-	}
-
-	if !found {
-		return false
-	}
-
-	// Check if any opponent piece can attack the king
-	opponentColor := "b"
-	if color == "b" {
-		opponentColor = "w"
-	}
-
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 8; j++ {
-			piece := b.Position[i][j]
-			if piece != "" && string(piece[0]) == opponentColor {
-				// Simple check: can any piece attack the king?
-				// This is a simplified version for CLI purposes
-				_ = piece // Use piece to avoid unused error
-			}
-		}
-	}
-
-	return false
-}
-
-func (b *chess.Board) hasLegalMoves(color string) bool {
-	for i := 0; i < 8; i++ {
-		for j := 0; j < 8; j++ {
-			piece := b.Position[i][j]
-			if piece != "" && string(piece[0]) == color {
-				for ti := 0; ti < 8; ti++ {
-					for tj := 0; tj < 8; tj++ {
-						fromSquare := string(rune('a'+j)) + string(rune('1'+(8-i)))
-						toSquare := string(rune('a'+tj)) + string(rune('1'+(8-ti)))
-						if b.ValidateMove(fromSquare, toSquare, "").Valid {
-							return true
-						}
-					}
-				}
-			}
-		}
-	}
-	return false
 }
