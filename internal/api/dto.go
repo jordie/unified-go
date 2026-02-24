@@ -472,6 +472,22 @@ type RecordResultRequest struct {
 // CHESS APP - Response DTOs
 // ============================================================================
 
+// PlayerInfo represents basic player information
+type PlayerInfo struct {
+	PlayerID   int64  `json:"player_id"`
+	Username   string `json:"username"`
+	Rating     int    `json:"rating"`
+	RatingTier string `json:"rating_tier"`
+}
+
+// GameSummary represents a brief game summary
+type GameSummary struct {
+	GameID       int64     `json:"game_id"`
+	Opponent     string    `json:"opponent"`
+	Result       string    `json:"result"` // "win", "loss", "draw"
+	CompletedAt  time.Time `json:"completed_at"`
+}
+
 // GameResponse represents complete game state
 type GameResponse struct {
 	ID            int64      `json:"id"`
@@ -547,8 +563,6 @@ type Achievement struct {
 	IconURL     string    `json:"icon_url,omitempty"`
 	EarnedAt    time.Time `json:"earned_at,omitempty"`
 }
-
-// GameSummary for response (already defined above in PlayerInfo)
 
 // LeaderboardResponse represents leaderboard entries
 type ChessLeaderboardResponse struct {

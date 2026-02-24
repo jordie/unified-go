@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jgirmay/GAIA_GO/internal/api"
 	"github.com/jgirmay/GAIA_GO/internal/middleware"
+	"github.com/jgirmay/GAIA_GO/internal/models"
 	"github.com/jgirmay/GAIA_GO/internal/session"
 )
 
@@ -116,7 +117,7 @@ func handleGetGame(c *gin.Context, app *ChessApp) {
 
 	moves, err := app.GetGameMoves(gameID)
 	if err != nil {
-		moves = []struct{}{} // Return empty list on error
+		moves = []models.ChessMove{} // Return empty list on error
 	}
 
 	api.RespondWith(c, http.StatusOK, gin.H{
@@ -134,7 +135,7 @@ func handleMakeMove(c *gin.Context, app *ChessApp, sessionMgr *session.Manager) 
 		return
 	}
 
-	game, err := app.GetGame(req.GameID)
+	_, err := app.GetGame(req.GameID)
 	if err != nil {
 		api.RespondWithError(c, api.ErrInternalServer)
 		return
@@ -301,7 +302,7 @@ func handleGetLeaderboard(c *gin.Context, app *ChessApp) {
 func handleGetGameReplay(c *gin.Context, app *ChessApp) {
 	gameIDStr := c.Param("game_id")
 
-	gameID, err := api.ParseInt64(gameIDStr)
+	gameID, err := strconv.ParseInt(gameIDStr, 10, 64)
 	if err != nil {
 		api.RespondWithError(c, api.ErrBadRequest)
 		return
@@ -315,7 +316,7 @@ func handleGetGameReplay(c *gin.Context, app *ChessApp) {
 
 	moves, err := app.GetGameMoves(gameID)
 	if err != nil {
-		moves = []struct{}{}
+		moves = []models.ChessMove{}
 	}
 
 	api.RespondWith(c, http.StatusOK, gin.H{
