@@ -9,7 +9,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/jgirmay/GAIA_GO/internal/session"
-	"github.com/jgirmay/GAIA_GO/pkg/apps/typing"
 	"github.com/jgirmay/GAIA_GO/pkg/router"
 )
 
@@ -32,13 +31,6 @@ func main() {
 	sessionMgr := session.NewManager(db)
 	log.Printf("[INFO] Session manager initialized")
 
-	// Initialize apps
-	typingApp := typing.NewTypingApp(db)
-	if err := typingApp.InitDB(); err != nil {
-		log.Printf("[WARN] Failed to initialize typing DB: %v", err)
-	}
-	log.Printf("[INFO] Typing app initialized")
-
 	// Create router
 	appRouter := router.NewAppRouter(sessionMgr)
 	appRouter.RegisterMiddleware()
@@ -47,14 +39,23 @@ func main() {
 	appRouter.RegisterAuthRoutes()
 	appRouter.RegisterUserRoutes()
 
-	// Register app-specific routes
-	typingGroup := appRouter.RegisterAppRoutes("typing")
-	typing.RegisterHandlers(typingGroup, typingApp, sessionMgr)
-	log.Printf("[INFO] Typing app routes registered")
+	// Auto-register all GAIA apps with discovery and dependency resolution
+	if err := appRouter.RegisterAllApps(db, sessionMgr); err != nil {
+		log.Printf("[WARN] Failed to auto-register apps: %v", err)
+	}
+	log.Printf("[INFO] All apps auto-registered")
 
-	// Serve static files
-	appRouter.RegisterStaticFiles("typing", "./web/static/typing")
-	log.Printf("[INFO] Static files registered")
+	// Serve static files for each app
+	staticDirs := map[string]string{
+		"typing":  "./web/static/typing",
+		"math":    "./web/static/math",
+		"piano":   "./web/static/piano",
+		"reading": "./web/static/reading",
+	}
+	for appName, staticDir := range staticDirs {
+		appRouter.RegisterStaticFiles(appName, staticDir)
+	}
+	log.Printf("[INFO] Static files registered for all apps")
 
 	// Print routes
 	printRoutes(env)
