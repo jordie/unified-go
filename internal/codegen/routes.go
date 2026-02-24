@@ -10,13 +10,34 @@ import (
 
 // CodegenHandler manages SDK generation endpoints
 type CodegenHandler struct {
-	generator *ClientGenerator
+	generator          *ClientGenerator
+	distributionHandler *DistributionHandler
 }
 
 // NewCodegenHandler creates a new codegen handler
 func NewCodegenHandler(spec *docs.OpenAPISpec) *CodegenHandler {
+	generator := NewClientGenerator(spec)
+	config := PackageConfig{
+		Name:        "client",
+		Version:     "1.0.0",
+		Description: "GAIA API Client SDK",
+		Author:      "GAIA Development Team",
+		License:     "MIT",
+		Homepage:    "https://github.com/jgirmay/gaia-go-client",
+		Repository:  "https://github.com/jgirmay/gaia-go-client.git",
+		BugTracker:  "https://github.com/jgirmay/gaia-go-client/issues",
+		Tags: []string{
+			"api",
+			"client",
+			"sdk",
+			"gaia",
+			"education",
+		},
+	}
+
 	return &CodegenHandler{
-		generator: NewClientGenerator(spec),
+		generator:          generator,
+		distributionHandler: NewDistributionHandler(generator, config),
 	}
 }
 
@@ -30,6 +51,9 @@ func (h *CodegenHandler) RegisterRoutes(engine *gin.Engine) {
 		sdks.GET("/python", h.handleGeneratePython)
 		sdks.GET("/endpoints", h.handleListEndpoints)
 	}
+
+	// Register distribution routes
+	h.distributionHandler.RegisterRoutes(engine)
 }
 
 // handleSDKIndex returns SDK generation index
