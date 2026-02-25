@@ -8,16 +8,19 @@ import (
 	"github.com/jgirmay/GAIA_GO/internal/codegen"
 	"github.com/jgirmay/GAIA_GO/internal/docs"
 	"github.com/jgirmay/GAIA_GO/internal/health"
+	"github.com/jgirmay/GAIA_GO/internal/metrics"
 	"github.com/jgirmay/GAIA_GO/internal/middleware"
 	"github.com/jgirmay/GAIA_GO/internal/session"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // AppRouter handles all education app routes
 type AppRouter struct {
-	engine          *gin.Engine
-	sessionManager  *session.Manager
-	authMiddleware  gin.HandlerFunc
-	requireAuth     gin.HandlerFunc
+	engine           *gin.Engine
+	sessionManager   *session.Manager
+	authMiddleware   gin.HandlerFunc
+	requireAuth      gin.HandlerFunc
+	metricsRegistry  *metrics.HTTPMetricsRegistry
 }
 
 // NewAppRouter creates a new unified application router
@@ -39,6 +42,11 @@ func (r *AppRouter) GetEngine() *gin.Engine {
 
 // RegisterMiddleware registers global middleware
 func (r *AppRouter) RegisterMiddleware() {
+	// Add metrics middleware FIRST to capture all requests including errors
+	if r.metricsRegistry != nil {
+		r.engine.Use(middleware.MetricsMiddleware(r.metricsRegistry))
+	}
+
 	// Apply authentication middleware to all routes
 	r.engine.Use(r.authMiddleware)
 
@@ -120,6 +128,13 @@ func (r *AppRouter) RegisterHealthCheck(db *sql.DB, apps []app.AppRegistry, meta
 func (r *AppRouter) RegisterSDKGeneration(spec *docs.OpenAPISpec) {
 	codegenHandler := codegen.NewCodegenHandler(spec)
 	codegenHandler.RegisterRoutes(r.engine)
+}
+
+// RegisterMetricsEndpoint registers the /metrics endpoint for HTTP API metrics
+func (r *AppRouter) RegisterMetricsEndpoint(registry *metrics.HTTPMetricsRegistry) {
+	r.engine.GET("/metrics", gin.WrapH(promhttp.HandlerFor(registry.GetPrometheusRegistry(), promhttp.HandlerOpts{
+		EnableOpenMetrics: true,
+	})))
 }
 
 // ============================================================================

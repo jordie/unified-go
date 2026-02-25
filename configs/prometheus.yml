@@ -110,3 +110,11 @@ scrape_configs:
         action: keep
     scrape_interval: 15s
     scrape_timeout: 10s
+
+  # HTTP API metrics from Gin server (Phase 6)
+  - job_name: 'gaia-http-api'
+    static_configs:
+      - targets: ['localhost:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s

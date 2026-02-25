@@ -7,6 +7,7 @@ import (
 
 	appmodule "github.com/jgirmay/GAIA_GO/internal/app"
 	"github.com/jgirmay/GAIA_GO/internal/docs"
+	"github.com/jgirmay/GAIA_GO/internal/metrics"
 	"github.com/jgirmay/GAIA_GO/internal/session"
 	mathhandlers "github.com/jgirmay/GAIA_GO/pkg/apps/math"
 	pianohandlers "github.com/jgirmay/GAIA_GO/pkg/apps/piano"
@@ -23,6 +24,11 @@ func (r *AppRouter) RegisterAllApps(db *sql.DB, sessionManager *session.Manager)
 	}
 
 	log.Printf("Registering %d apps in load order: %v\n", len(discovered.Apps), discovered.LoadOrder)
+
+	// Initialize metrics registries (Phase 6)
+	httpMetrics := metrics.NewHTTPMetricsRegistry()
+	r.metricsRegistry = httpMetrics
+	log.Printf("✓ Initialized HTTP metrics registry\n")
 
 	// Register handlers for each app in dependency order
 	for _, appName := range discovered.LoadOrder {
@@ -44,6 +50,10 @@ func (r *AppRouter) RegisterAllApps(db *sql.DB, sessionManager *session.Manager)
 	openAPISpec := discoveredOpenAPISpec(discovered.Apps, discovered.Metadata)
 	r.RegisterSDKGeneration(openAPISpec)
 	log.Printf("Registered SDK generation endpoints\n")
+
+	// Register metrics endpoint (Phase 6)
+	r.RegisterMetricsEndpoint(httpMetrics)
+	log.Printf("✓ Registered metrics endpoint at /metrics\n")
 
 	return nil
 }
